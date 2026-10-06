@@ -38,6 +38,8 @@ Cloudflare Workers + D1 + R2. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 Requirements: JDK 17 or newer (the JDK bundled with Android Studio works) and the Android SDK.
 
 ```sh
+git clone https://github.com/orbitmaps-oss/orbitmaps.git
+cd orbitmaps
 ./gradlew assembleDebug
 ./gradlew testDebugUnitTest test lintDebug ktlintCheck
 ```
@@ -46,7 +48,13 @@ Requirements: JDK 17 or newer (the JDK bundled with Android Studio works) and th
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) (commits need a DCO
 sign-off), the [Code of Conduct](CODE_OF_CONDUCT.md) and [GOVERNANCE.md](GOVERNANCE.md).
-Security issues: see [SECURITY.md](SECURITY.md). Please don't open public issues for them.
+Security issues: report privately at
+<https://github.com/orbitmaps-oss/orbitmaps/security/advisories/new> (see [SECURITY.md](SECURITY.md)).
+Please don't open public issues for them.
+
+Project lead: [@Ravikant97](https://github.com/Ravikant97) ·
+Repository: <https://github.com/orbitmaps-oss/orbitmaps> ·
+Issues: <https://github.com/orbitmaps-oss/orbitmaps/issues>
 
 ## Licence
 
