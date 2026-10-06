@@ -73,7 +73,7 @@ There are two scopes:
 | actions/setup-java | `actions/setup-java` | MIT | Install Temurin JDK on the runner |
 | actions/setup-python | `actions/setup-python` | MIT | Python for the policy scripts |
 | actions/upload-artifact | `actions/upload-artifact` | MIT | Upload lint and test reports |
-| gradle/actions | `gradle/actions` | MIT | Gradle caching and wrapper validation |
+| gradle/actions | `gradle/actions` | MIT | **`wrapper-validation` only.** `setup-gradle` is not used because its default caching (v6+) is proprietary. Caching comes from `actions/setup-java` |
 
 ## Planned (not yet added)
 

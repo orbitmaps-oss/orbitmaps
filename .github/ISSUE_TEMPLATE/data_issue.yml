@@ -1,0 +1,39 @@
+name: Map data or region pack issue
+description: Problems with region packs, map styles or how data is processed (not mistakes in the map itself)
+labels: ["data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Is the map itself wrong** (missing road, wrong name, closed shop)? Orbit Maps uses
+        OpenStreetMap data, so please fix it at https://www.openstreetmap.org (anyone can edit).
+        The fix will appear in Orbit Maps when the region packs are next rebuilt.
+
+        Use this form for problems with **our processing**: a pack that fails to download or install,
+        data that is in OpenStreetMap but missing or rendered wrongly in Orbit Maps, search or routing
+        that ignores correct OSM data, or style problems.
+  - type: input
+    id: region
+    attributes:
+      label: Region pack
+      placeholder: "e.g. India / Karnataka"
+    validations:
+      required: true
+  - type: input
+    id: osm-link
+    attributes:
+      label: Link to the OpenStreetMap object (optional)
+      description: A link to a public place on openstreetmap.org, not your own location.
+      placeholder: "https://www.openstreetmap.org/way/…"
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version and pack date
+    validations:
+      required: true

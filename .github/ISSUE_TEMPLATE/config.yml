@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security or privacy vulnerability (private)
+    url: https://github.com/orbitmaps-oss/orbitmaps/security/advisories/new
+    about: Please report vulnerabilities privately, never in a public issue.
+  - name: Fix wrong map data on OpenStreetMap
+    url: https://www.openstreetmap.org
+    about: Roads, names and places come from OpenStreetMap. Fix them there and they will reach Orbit Maps.
