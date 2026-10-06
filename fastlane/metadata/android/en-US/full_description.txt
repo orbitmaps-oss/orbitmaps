@@ -1,0 +1,17 @@
+Orbit Maps shows maps, searches places and plans routes entirely on your device, from region packs you download once.
+
+<b>Private</b>
+• No account, no ads, no analytics, no trackers
+• No Google Play Services or Firebase
+• Your location and searches never leave your phone
+
+<b>Offline</b>
+• Map, search and routing all work without a connection
+• Download only the regions you need
+
+<b>Open</b>
+• Map data © OpenStreetMap contributors (ODbL)
+• Free software: GPL-3.0-or-later
+• Source code: https://github.com/orbitmaps-oss/orbitmaps
+
+Orbit Maps is in early development.
