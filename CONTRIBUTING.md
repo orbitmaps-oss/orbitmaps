@@ -61,6 +61,10 @@ Every new dependency (library, Gradle plugin, GitHub Action, pipeline tool) must
    ./gradlew dependencies --write-locks --write-verification-metadata sha256
    ```
 
+   `gradle/verification-metadata.xml` only records artifacts for the OS you ran this on. For
+   platform-specific artifacts (currently `aapt2`), add the SHA-256 of the `-linux`, `-osx` and
+   `-windows` jars from Google Maven, or CI (Linux) will fail verification.
+
 CI fails if a dependency outside the allow-list is added.
 
 ## Rules for data

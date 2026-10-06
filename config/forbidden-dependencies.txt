@@ -1,0 +1,41 @@
+# Dependencies that must never appear in any configuration (app, build or test).
+# Patterns match "group:artifact" with shell-style wildcards. Checked by scripts/check_dependencies.py.
+# See AGENTS.md section 1 (privacy first).
+
+# Google Play Services, Firebase and other proprietary Google client SDKs
+com.google.android.gms:*
+com.google.firebase:*
+com.google.android.play:*
+com.google.android.ump:*
+com.google.android.datatransport:*
+com.google.android.libraries.places:*
+com.google.maps.android:*
+com.google.mlkit:*
+com.google.ads.*:*
+com.google.android.ads:*
+
+# Other proprietary service SDKs and map SDKs
+com.huawei.hms:*
+com.huawei.agconnect:*
+com.mapbox.*:*
+com.facebook.android:*
+
+# Analytics, attribution, advertising, crash reporting, push and monitoring SDKs
+com.crashlytics.*:*
+io.sentry:*
+com.bugsnag:*
+com.appsflyer:*
+com.adjust.sdk:*
+com.mixpanel.*:*
+com.amplitude:*
+com.segment.*:*
+io.branch.sdk.android:*
+com.onesignal:*
+com.newrelic.*:*
+com.datadoghq:*
+com.instabug.*:*
+com.flurry.*:*
+ly.count.android:*
+com.yandex.android:*
+com.microsoft.appcenter:*
+io.embrace:*
