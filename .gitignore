@@ -1,0 +1,60 @@
+# --- Gradle / Android build output ---
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+output-metadata.json
+
+# --- IDEs (never commit: may contain personal data) ---
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.fleet/
+out/
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Secrets and signing material (never commit) ---
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+keystore.properties
+signing.properties
+google-services.json
+GoogleService-Info.plist
+.env
+.env.*
+secrets.*
+.dev.vars
+.dev.vars.*
+
+# --- Cloudflare / Node tooling ---
+.wrangler/
+node_modules/
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+
+# --- Pipeline output (large generated data, published separately) ---
+pipeline/out/
+*.pmtiles
+*.osm.pbf
+*.mbtiles
