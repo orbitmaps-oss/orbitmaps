@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest an idea for Orbit Maps
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Orbit Maps is **privacy-first** and **offline-first** (see
+        https://github.com/orbitmaps-oss/orbitmaps/blob/main/AGENTS.md). Features that need
+        accounts, tracking, Google Play Services or always-on network access are unlikely to be accepted.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: offline-privacy
+    attributes:
+      label: Offline and privacy impact
+      description: Does it work without a network connection? Does it need any new permission, data source or network request?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered (optional)

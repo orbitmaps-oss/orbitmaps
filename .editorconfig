@@ -12,6 +12,9 @@ indent_size = 4
 max_line_length = 120
 ktlint_code_style = android_studio
 ktlint_function_naming_ignore_when_annotated_with = Composable
+# Our packages start with `in` (reverse of orbitmaps.in), a Kotlin keyword that must be
+# backtick-escaped; ktlint's package-name rule rejects the backticks.
+ktlint_standard_package-name = disabled
 
 [*.{yml,yaml,json,toml}]
 indent_size = 2

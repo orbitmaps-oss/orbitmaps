@@ -1,0 +1,11 @@
+# Only GitHub Actions are updated automatically (keeping SHA pins current).
+# Gradle dependencies are updated by hand: Dependabot cannot regenerate the lockfiles and
+# gradle/verification-metadata.xml, so its Gradle PRs would always fail CI.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"

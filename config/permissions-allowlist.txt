@@ -1,0 +1,12 @@
+# Android permissions the app may request. Checked by scripts/check_permissions.py against the
+# merged release manifest.
+#
+# Format: one permission per line, followed by "#" and the reason it is needed (required), e.g.
+#   android.permission.ACCESS_FINE_LOCATION  # show your position on the map and navigate; never leaves the device
+#
+# Signature-level permissions that the app declares for itself (e.g. AndroidX's
+# DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION) are allowed automatically.
+#
+# Adding a line here needs an explanation in the pull request and an update to PRIVACY.md.
+
+# (none yet)

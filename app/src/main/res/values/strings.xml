@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Orbit Maps</string>
+    <string name="placeholder_title">Orbit Maps</string>
+    <string name="placeholder_body">Private, offline maps. Coming soon.</string>
+    <string name="osm_attribution">© OpenStreetMap contributors</string>
+</resources>

@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Builds, tests and lints every pull request, and enforces the dependency, permission and
+# secrets policies. No secrets are used. Actions are pinned to commit SHAs and must be in the
+# [actions] section of config/dependency-allowlist.txt.
+#
+# gradle/actions/setup-gradle is deliberately not used: from v6 its default caching is
+# proprietary. Gradle caching comes from actions/setup-java instead.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    name: Policy checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.x"
+
+      - name: Policy script tests
+        run: python -m unittest discover -s scripts -p "test_*.py" -v
+
+      - name: Dependency allow-list
+        run: python scripts/check_dependencies.py
+
+      - name: No secrets, keystores or IDE files
+        run: python scripts/check_forbidden_files.py
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+  dco:
+    name: DCO sign-off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Every commit has Signed-off-by
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          status=0
+          for commit in $(git rev-list --no-merges "$BASE_SHA..$HEAD_SHA"); do
+            if ! git log -1 --format=%B "$commit" | grep -qE '^Signed-off-by: .+ <.+>$'; then
+              echo "::error::Commit $commit has no 'Signed-off-by:' line. Use 'git commit -s' (see CONTRIBUTING.md)."
+              status=1
+            fi
+          done
+          exit $status
+
+  build:
+    name: Build, test and lint
+    needs: policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Build, unit tests, Android Lint and ktlint
+        run: >
+          ./gradlew --no-daemon --dependency-verification strict
+          assembleDebug assembleRelease
+          testDebugUnitTest :core:model:test
+          lintDebug :core:model:lint
+          ktlintCheck
+
+      - name: Permissions in merged release manifest
+        run: python3 scripts/check_permissions.py app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reports
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
