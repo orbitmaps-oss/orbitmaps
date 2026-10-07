@@ -43,6 +43,9 @@ jobs:
       - name: No secrets, keystores or IDE files
         run: python scripts/check_forbidden_files.py
 
+      - name: No remote URLs in bundled map assets
+        run: python scripts/check_offline.py
+
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
@@ -95,8 +98,17 @@ jobs:
           lintDebug :core:model:lint
           ktlintCheck
 
-      - name: Permissions in merged release manifest
-        run: python3 scripts/check_permissions.py app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
+      - name: Permissions in merged debug and release manifests
+        run: >
+          python3 scripts/check_permissions.py
+          app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml
+          app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
+
+      - name: No INTERNET permission in merged manifests
+        run: >
+          python3 scripts/check_offline.py --manifest
+          app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml
+          app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
 
       - name: Upload reports
         if: always()
