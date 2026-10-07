@@ -49,6 +49,18 @@ android {
         disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
     }
 
+    testOptions {
+        unitTests.all { test ->
+            // Unit tests read the real bundled style and string resources.
+            val stylesDir = rootProject.file("styles/bundled")
+            val resDir = file("src/main/res")
+            test.inputs.dir(stylesDir).withPathSensitivity(PathSensitivity.RELATIVE)
+            test.inputs.dir(resDir).withPathSensitivity(PathSensitivity.RELATIVE)
+            test.systemProperty("orbitmaps.stylesDir", stylesDir.path)
+            test.systemProperty("orbitmaps.resDir", resDir.path)
+        }
+    }
+
     dependenciesInfo {
         // Don't embed the dependency metadata block that only Google Play can read (F-Droid rejects it).
         includeInApk = false
