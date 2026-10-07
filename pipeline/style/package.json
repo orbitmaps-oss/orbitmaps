@@ -1,0 +1,13 @@
+{
+  "name": "orbitmaps-style",
+  "private": true,
+  "description": "Generates the bundled offline map style from @protomaps/basemaps. See pipeline/README.md.",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate_style.mjs"
+  },
+  "dependencies": {
+    "@protomaps/basemaps": "5.7.2"
+  }
+}

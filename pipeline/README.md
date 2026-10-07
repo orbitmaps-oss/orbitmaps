@@ -39,13 +39,17 @@ python -I pipeline/sample_region/fetch_sample_region.py
 
 ## Bundled style (`style/`)
 
-Generates `styles/bundled/map/style-light.json` from the pinned `@protomaps/basemaps` package:
+Generates `styles/bundled/map/style-light.json` from the pinned `@protomaps/basemaps` package
+(version and integrity hash pinned in `package-lock.json`). Run from the repository root:
 
 ```sh
-cd pipeline/style
-npm ci --ignore-scripts
-node generate_style.mjs
+npm ci --ignore-scripts --prefix pipeline/style
+node pipeline/style/generate_style.mjs
 ```
+
+The output is deterministic, so a re-run must leave `style-light.json` unchanged. Glyphs and
+sprites are not generated: they are copied from `protomaps/basemaps-assets` at a pinned commit
+(see [docs/THIRD_PARTY.md](../docs/THIRD_PARTY.md) and [docs/GLYPHS.md](../docs/GLYPHS.md)).
 
 ## Rules
 
