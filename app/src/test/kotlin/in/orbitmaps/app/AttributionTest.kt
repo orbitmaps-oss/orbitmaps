@@ -2,6 +2,7 @@
 
 package `in`.orbitmaps.app
 
+import `in`.orbitmaps.app.map.ATTRIBUTION_TEXT
 import `in`.orbitmaps.app.map.OfflineStyle
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
@@ -38,6 +39,11 @@ class AttributionTest {
         val value = (0 until strings.length).map { strings.item(it) }
             .single { it.attributes.getNamedItem("name").nodeValue == "osm_attribution" }.textContent
         assertEquals(osmAttribution, value)
+    }
+
+    @Test
+    fun mapOverlayShowsTheOsmAttributionString() {
+        assertEquals(R.string.osm_attribution, ATTRIBUTION_TEXT)
     }
 
     @Test

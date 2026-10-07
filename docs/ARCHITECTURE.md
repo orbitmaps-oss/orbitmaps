@@ -17,6 +17,26 @@ Packs are built by `pipeline/` from OpenStreetMap extracts and served from Cloud
 Cloudflare Worker (backed by D1) serves the pack catalogue. Downloads carry no user data, and the
 server keeps no IP or request logs.
 
+## Offline map (current step)
+
+Until region-pack downloads exist, the app shows one development region:
+
+1. `pipeline/sample_region/` extracts a small PMTiles file around Panaji from a pinned Protomaps
+   build. **Debug** builds bundle it as the asset `regions/panaji.pmtiles` (stored uncompressed).
+   Release builds don't include it and show a "no region installed" message.
+2. On launch, `RegionInstaller` copies the asset to `filesDir/regions/panaji.pmtiles`. It writes to a
+   `.tmp` file, syncs it, checks the PMTiles v3 header, and then renames it atomically. A marker file
+   (app update time + size) means the copy is skipped on later launches, and repeated after an update.
+3. `OfflineStyle` loads the bundled style (`styles/bundled/map/style-light.json`) and points its
+   vector source at `pmtiles://file://<installed path>`. Glyphs and sprites are `asset://` URLs, and
+   any `http(s)://` string in the style is rejected.
+4. `MainActivity` turns MapLibre's logging off (log lines can contain tile coordinates) and puts it in
+   offline mode. The manifest removes INTERNET and the other permissions MapLibre's library manifest
+   asks for, so the OS blocks every socket. "© OpenStreetMap contributors" is always shown,
+   bottom-start, inside the safe drawing area.
+
+The map code lives in `app/.../map/` for now and moves to `core/map/` when a second user appears.
+
 ## Modules
 
 ```
