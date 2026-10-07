@@ -8,13 +8,16 @@ Checks:
   * no module matches config/forbidden-dependencies.txt;
   * every allow-list pattern is documented (in backticks) in docs/THIRD_PARTY.md;
   * every GitHub Action used in .github/workflows is in the [actions] section and pinned to a
-    full commit SHA.
+    full commit SHA;
+  * every npm package in a pipeline/**/package-lock.json is in the [pipeline] section (pipeline
+    tools that are downloaded by a script, such as the pmtiles CLI, are listed there too).
 
 Usage: python scripts/check_dependencies.py [repo_root]
 """
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -22,7 +25,7 @@ from pathlib import Path
 
 from policy import REPO_ROOT, matches_any, read_lines
 
-SECTIONS = ("app", "build", "actions")
+SECTIONS = ("app", "build", "actions", "pipeline")
 SKIP_DIRS = {".git", ".gradle", "build", "node_modules", ".idea"}
 TEST_CONFIGURATION = re.compile(r"(^test|UnitTest|AndroidTest|TestFixtures)")
 USES = re.compile(r"^\s*(?:-\s*)?uses:\s*['\"]?([^'\"\s#]+)", re.MULTILINE)
@@ -34,9 +37,10 @@ class AllowList:
     app: list[str] = field(default_factory=list)
     build: list[str] = field(default_factory=list)
     actions: list[str] = field(default_factory=list)
+    pipeline: list[str] = field(default_factory=list)
 
     def all_patterns(self) -> list[str]:
-        return self.app + self.build + self.actions
+        return self.app + self.build + self.actions + self.pipeline
 
 
 def parse_allowlist(path: Path) -> AllowList:
@@ -134,6 +138,25 @@ def check_workflows(root: Path, allow: AllowList) -> list[str]:
     return errors
 
 
+def check_npm_lockfiles(root: Path, allow: AllowList) -> list[str]:
+    errors = []
+    pipeline = root / "pipeline"
+    if not pipeline.is_dir():
+        return errors
+    for path in sorted(pipeline.rglob("package-lock.json")):
+        if SKIP_DIRS.intersection(path.relative_to(root).parts[:-1]):
+            continue
+        where = path.relative_to(root).as_posix()
+        packages = json.loads(path.read_text(encoding="utf-8")).get("packages", {})
+        for key in sorted(packages):
+            if not key:
+                continue  # the root project itself
+            name = key.rsplit("node_modules/", 1)[-1]
+            if name not in allow.pipeline:
+                errors.append(f"{where}: npm package {name} is not in the [pipeline] allow-list")
+    return errors
+
+
 def run(root: Path) -> list[str]:
     allow = parse_allowlist(root / "config" / "dependency-allowlist.txt")
     forbidden = read_lines(root / "config" / "forbidden-dependencies.txt")
@@ -141,6 +164,7 @@ def run(root: Path) -> list[str]:
     errors += check_lockfiles(root, allow, forbidden)
     errors += check_third_party_doc(root / "docs" / "THIRD_PARTY.md", allow)
     errors += check_workflows(root, allow)
+    errors += check_npm_lockfiles(root, allow)
     return errors
 
 

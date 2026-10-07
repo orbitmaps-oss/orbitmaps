@@ -7,6 +7,9 @@
 # [app]   may ship in the APK (runtime classpaths). Licence must be GPL-3.0-compatible and not GPL-only.
 # [build] build, lint and test tooling only. Never allowed on a shipped runtime classpath.
 # [actions] GitHub Actions used in .github/workflows (owner/repo).
+# [pipeline] tools used by pipeline/ scripts: npm package names (checked against every
+#           pipeline/**/package-lock.json) and downloaded tools (owner/repo, pinned by SHA-256
+#           in the script that downloads them). Never shipped in the app.
 
 [app]
 androidx.*:*
@@ -84,3 +87,7 @@ actions/setup-java
 actions/setup-python
 actions/upload-artifact
 gradle/actions
+
+[pipeline]
+protomaps/go-pmtiles
+@protomaps/basemaps

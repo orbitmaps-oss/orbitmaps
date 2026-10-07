@@ -18,9 +18,19 @@ junit:junit
 
 [actions]
 actions/checkout
+
+[pipeline]
+@protomaps/basemaps
 """
 
-THIRD_PARTY = "`androidx.*:*` `org.jetbrains.kotlin:*` `com.android.tools.*:*` `junit:junit` `actions/checkout`"
+THIRD_PARTY = (
+    "`androidx.*:*` `org.jetbrains.kotlin:*` `com.android.tools.*:*` `junit:junit` `actions/checkout` "
+    "`@protomaps/basemaps`"
+)
+
+NPM_LOCK = """
+{"lockfileVersion": 3, "packages": {"": {"name": "x"}, "node_modules/@protomaps/basemaps": {"version": "5.7.2"}}}
+"""
 
 FORBIDDEN = "com.google.firebase:*\ncom.google.android.gms:*\n"
 
@@ -114,6 +124,25 @@ class CheckDependenciesTest(unittest.TestCase):
     def test_unknown_action_fails(self):
         self.write(".github/workflows/ci.yml", f"steps:\n  - uses: someone/thing/sub@{SHA}\n")
         self.assertIn("someone/thing is not in the [actions] allow-list", " ".join(cd.run(self.root)))
+
+    def test_allowed_npm_package_passes(self):
+        self.write("pipeline/style/package-lock.json", NPM_LOCK)
+        self.assertEqual([], cd.run(self.root))
+
+    def test_unlisted_npm_package_fails(self):
+        self.write("pipeline/style/package-lock.json", NPM_LOCK.replace("@protomaps/basemaps", "left-pad"))
+        self.assertEqual(
+            ["pipeline/style/package-lock.json: npm package left-pad is not in the [pipeline] allow-list"],
+            cd.run(self.root),
+        )
+
+    def test_npm_lockfiles_in_node_modules_are_ignored(self):
+        self.write("pipeline/style/node_modules/x/package-lock.json", NPM_LOCK.replace("@protomaps/basemaps", "y"))
+        self.assertEqual([], cd.run(self.root))
+
+    def test_undocumented_pipeline_pattern_fails(self):
+        self.write("docs/THIRD_PARTY.md", THIRD_PARTY.replace("`@protomaps/basemaps`", ""))
+        self.assertIn("`@protomaps/basemaps` is not documented", " ".join(cd.run(self.root)))
 
     def test_pattern_outside_section_is_rejected(self):
         self.write("config/dependency-allowlist.txt", "androidx.*:*\n")

@@ -75,6 +75,13 @@ There are two scopes:
 | actions/upload-artifact | `actions/upload-artifact` | MIT | Upload lint and test reports |
 | gradle/actions | `gradle/actions` | MIT | **`wrapper-validation` only.** `setup-gradle` is not used because its default caching (v6+) is proprietary. Caching comes from `actions/setup-java` |
 
+## Pipeline tools (developer machines and CI only, not shipped)
+
+| Component | Coordinates | Version | Licence | URL | Why |
+|---|---|---|---|---|---|
+| go-pmtiles (pmtiles CLI) | `protomaps/go-pmtiles` | 1.31.2 | BSD-3-Clause | https://github.com/protomaps/go-pmtiles | Extracts the sample region from a Protomaps build (`pipeline/sample_region/`). Each release archive's SHA-256 is pinned in the script |
+| Protomaps basemaps style | `@protomaps/basemaps` | 5.7.2 | BSD-3-Clause | https://github.com/protomaps/basemaps | Generates the bundled map style (`pipeline/style/`); version and integrity are pinned in `package-lock.json` |
+
 ## Planned (not yet added)
 
 | Component | Licence | URL | Note |
