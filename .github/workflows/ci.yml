@@ -37,6 +37,9 @@ jobs:
       - name: Policy script tests
         run: python -m unittest discover -s scripts -p "test_*.py" -v
 
+      - name: Pipeline tests
+        run: python -m unittest discover -s pipeline/sample_region -p "test_*.py" -v
+
       - name: Dependency allow-list
         run: python scripts/check_dependencies.py
 
