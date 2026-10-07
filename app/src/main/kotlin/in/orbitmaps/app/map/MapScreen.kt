@@ -39,11 +39,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import `in`.orbitmaps.app.Attribution
 import `in`.orbitmaps.app.R
 import java.io.IOException
+import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -122,14 +125,13 @@ private fun OfflineMap(styleJson: String, onLoadFailed: () -> Unit) {
             onCreate(null)
             addOnDidFailLoadingMapListener { onLoadFailed() }
             getMapAsync { map ->
-                map.setLatLngBoundsForCameraTarget(
-                    LatLngBounds.from(
-                        SampleRegion.northEast.latitude,
-                        SampleRegion.northEast.longitude,
-                        SampleRegion.southWest.latitude,
-                        SampleRegion.southWest.longitude
-                    )
-                )
+                // The limits assume a north-up, flat map; rotating or tilting would show past the region.
+                map.uiSettings.isRotateGesturesEnabled = false
+                map.uiSettings.isTiltGesturesEnabled = false
+                val limiter = RegionCameraLimiter(this, map)
+                addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> limiter.onViewportChanged() }
+                map.addOnCameraMoveListener(limiter::onCameraMoved)
+                limiter.onViewportChanged()
                 map.setStyle(Style.Builder().fromJson(styleJson))
             }
         }
@@ -155,6 +157,51 @@ private fun OfflineMap(styleJson: String, onLoadFailed: () -> Unit) {
     }
 
     AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+}
+
+/**
+ * Applies [CameraLimits] to a map showing [SampleRegion]: a minimum zoom at which the region fills the
+ * view, and a camera-target area that keeps every edge of the view inside the region at the current zoom.
+ */
+private class RegionCameraLimiter(private val view: MapView, private val map: MapLibreMap) {
+    private var widthDp = 0.0
+    private var heightDp = 0.0
+    private var limitedForZoom = Double.NaN
+
+    fun onViewportChanged() {
+        val density = view.resources.displayMetrics.density
+        val width = view.width / density.toDouble()
+        val height = view.height / density.toDouble()
+        if (width <= 0 || height <= 0 || (width == widthDp && height == heightDp)) return
+        widthDp = width
+        heightDp = height
+        val minZoom = CameraLimits.minZoom(SampleRegion.southWest, SampleRegion.northEast, width, height)
+        map.setMinZoomPreference(minZoom)
+        if (map.cameraPosition.zoom < minZoom) map.moveCamera(CameraUpdateFactory.zoomTo(minZoom))
+        limitedForZoom = Double.NaN
+        onCameraMoved()
+    }
+
+    fun onCameraMoved() {
+        if (widthDp <= 0) return
+        val zoom = map.cameraPosition.zoom
+        if (abs(zoom - limitedForZoom) < ZOOM_EPSILON) return
+        limitedForZoom = zoom
+        val (low, high) = CameraLimits.targetBounds(
+            SampleRegion.southWest,
+            SampleRegion.northEast,
+            zoom,
+            widthDp,
+            heightDp
+        )
+        map.setLatLngBoundsForCameraTarget(
+            LatLngBounds.from(high.latitude, high.longitude, low.latitude, low.longitude)
+        )
+    }
+
+    private companion object {
+        const val ZOOM_EPSILON = 1e-6
+    }
 }
 
 @Composable

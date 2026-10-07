@@ -34,6 +34,9 @@ Until region-pack downloads exist, the app shows one development region:
    offline mode. The manifest removes INTERNET and the other permissions MapLibre's library manifest
    asks for, so the OS blocks every socket. "© OpenStreetMap contributors" is always shown,
    bottom-start, inside the safe drawing area.
+5. `CameraLimits` keeps the whole viewport inside the region: a minimum zoom at which the region fills
+   the map view, and camera-target bounds shrunk by half the view at the current zoom (recomputed on
+   every zoom change). Rotation and tilt are off, because the limits assume a north-up, flat map.
 
 The map code lives in `app/.../map/` for now and moves to `core/map/` when a second user appears.
 
