@@ -1,7 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- No permissions yet. Any new permission must be listed, with a reason, in config/permissions-allowlist.txt. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- MapLibre's library manifest asks for these; the app needs none of them yet.
+         The app is offline-only, so the OS blocks all sockets. Region-pack downloads will add INTERNET
+         back later, and showing the user's position will add location, each with a reason in
+         config/permissions-allowlist.txt (scripts/check_offline.py, scripts/check_permissions.py). -->
+    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
 
     <application
         android:allowBackup="false"
