@@ -18,6 +18,11 @@ org.jetbrains.kotlinx:*
 org.jetbrains:annotations
 org.jspecify:jspecify
 com.google.guava:listenablefuture
+org.maplibre.gl:*
+com.squareup.okhttp3:*
+com.squareup.okio:*
+com.jakewharton.timber:*
+com.google.code.gson:*
 
 [build]
 com.android.tools.*:*
@@ -41,7 +46,6 @@ io.github.oshai:*
 org.slf4j:*
 ch.qos.logback:*
 com.google.guava:*
-com.google.code.gson:*
 com.google.errorprone:*
 com.google.j2objc:*
 com.google.jimfs:*

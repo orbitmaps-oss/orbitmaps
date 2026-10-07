@@ -63,6 +63,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.maplibre.android)
 
     testImplementation(libs.junit)
 }

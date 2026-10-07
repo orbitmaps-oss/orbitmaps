@@ -26,6 +26,11 @@ There are two scopes:
 | JetBrains annotations | `org.jetbrains:annotations` | Apache-2.0 | Nullability annotations |
 | JSpecify | `org.jspecify:jspecify` | Apache-2.0 | Nullability annotations (AndroidX) |
 | Guava ListenableFuture | `com.google.guava:listenablefuture` | Apache-2.0 | Interface used by AndroidX |
+| MapLibre Native Android 13.6.0, gestures 0.0.4, GeoJSON/Turf 6.0.1 | `org.maplibre.gl:*` | BSD-2-Clause (SDK, gestures), Apache-2.0 (GeoJSON, Turf) | Offline map rendering with PMTiles. https://github.com/maplibre/maplibre-native |
+| OkHttp 4.12.0 | `com.squareup.okhttp3:*` | Apache-2.0 | MapLibre's HTTP client. Never used: the app has no INTERNET permission and MapLibre is set offline |
+| Okio 3.6.0 | `com.squareup.okio:*` | Apache-2.0 | I/O library used by OkHttp |
+| Timber 5.0.1 | `com.jakewharton.timber:*` | Apache-2.0 | MapLibre's logging facade. MapLibre logging is turned off |
+| Gson | `com.google.code.gson:*` | Apache-2.0 | JSON for MapLibre GeoJSON; also used by AGP / lint |
 
 ## Bundled map assets (shipped in the APK)
 
@@ -82,7 +87,7 @@ was committed. Total size: **1,335,997 bytes** (glyphs 1,011,353; sprites and th
 | kotlin-logging | `io.github.oshai:*` | Apache-2.0 | ktlint logging |
 | SLF4J | `org.slf4j:*` | MIT | Logging API for build tools |
 | Logback | `ch.qos.logback:*` | EPL-1.0 OR LGPL-2.1 | ktlint logging backend |
-| Guava, Gson, Error Prone annotations, j2objc annotations, Jimfs, Auto Value, Dagger, Tink, FlatBuffers | `com.google.guava:*`, `com.google.code.gson:*`, `com.google.errorprone:*`, `com.google.j2objc:*`, `com.google.jimfs:*`, `com.google.auto.value:*`, `com.google.dagger:*`, `com.google.crypto.tink:*`, `com.google.flatbuffers:*` | Apache-2.0 | AGP / lint dependencies |
+| Guava, Error Prone annotations, j2objc annotations, Jimfs, Auto Value, Dagger, Tink, FlatBuffers | `com.google.guava:*`, `com.google.errorprone:*`, `com.google.j2objc:*`, `com.google.jimfs:*`, `com.google.auto.value:*`, `com.google.dagger:*`, `com.google.crypto.tink:*`, `com.google.flatbuffers:*` | Apache-2.0 | AGP / lint dependencies |
 | JSR-305 annotations | `com.google.code.findbugs:*` | Apache-2.0 | AGP / lint dependency |
 | Protocol Buffers | `com.google.protobuf:*` | BSD-3-Clause | AGP dependency |
 | TensorFlow Lite metadata | `org.tensorflow:*` | Apache-2.0 | AGP ML model binding (unused) |
@@ -124,8 +129,6 @@ was committed. Total size: **1,335,997 bytes** (glyphs 1,011,353; sprites and th
 
 | Component | Licence | URL | Note |
 |---|---|---|---|
-| MapLibre Native (Android) | BSD-2-Clause | https://github.com/maplibre/maplibre-native | Map rendering, PMTiles support |
-| PMTiles | BSD-3-Clause | https://github.com/protomaps/PMTiles | Tile archive format |
 | Ferrostar | BSD-3-Clause | https://github.com/stadiamaps/ferrostar | Navigation core and UI |
 | Valhalla | MIT | https://github.com/valhalla/valhalla | Routing engine |
 | valhalla-mobile | **to verify when added** | https://github.com/Rallista/valhalla-mobile | Valhalla bindings for Android |
