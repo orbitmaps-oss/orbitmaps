@@ -95,3 +95,5 @@ gradle/actions
 [pipeline]
 protomaps/go-pmtiles
 @protomaps/basemaps
+valhalla/valhalla
+osmcode/osmium-tool

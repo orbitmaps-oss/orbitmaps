@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Builds Valhalla routing tiles for the Panaji sample region and uploads them as an artifact.
+# Manual only: Actions tab -> "Sample routing tiles" -> "Run workflow". Uses no secrets and writes
+# nothing to the repository or any server; the result is a downloadable artifact (30 days).
+# Actions are pinned to commit SHAs (same versions as ci.yml); the Valhalla image is pinned by digest
+# in pipeline/sample_region/build_sample_routing.py.
+
+name: Sample routing tiles
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Panaji routing tiles
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.x"
+
+      - name: Pipeline tests
+        run: python -m unittest discover -s pipeline/sample_region -p "test_*.py" -v
+
+      - name: Install osmium-tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends osmium-tool
+          osmium --version
+
+      - name: Build routing tiles
+        run: python pipeline/sample_region/build_sample_routing.py
+
+      - name: Upload tiles and manifest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: panaji-routing
+          # Paths in the artifact are relative to pipeline/out/sample-region/: unzip it there.
+          path: |
+            pipeline/out/sample-region/assets/regions/panaji-routing.tar
+            pipeline/out/sample-region/routing-manifest.json
+          retention-days: 30
+          if-no-files-found: error
