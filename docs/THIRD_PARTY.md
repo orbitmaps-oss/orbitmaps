@@ -10,7 +10,8 @@ There are two scopes:
 
 - **App:** shipped inside the APK (any `*RuntimeClasspath` that isn't a test classpath). These need
   an open-source licence that is compatible with GPL-3.0 and **not GPL-only**: Apache-2.0, MIT,
-  BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0, Zlib, Unicode, public domain/CC0, and OFL-1.1 for fonts.
+  BSD-2-Clause, BSD-3-Clause, BSL-1.0, ISC, MPL-2.0, Zlib, Unicode, public domain/CC0, and OFL-1.1 for
+  fonts.
 - **Build:** Gradle plugins, compilers, linters and test libraries. These never ship. They must be
   open source (OSI-approved), and copyleft licences such as EPL or LGPL are acceptable here.
 
@@ -28,9 +29,30 @@ There are two scopes:
 | Guava ListenableFuture | `com.google.guava:listenablefuture` | Apache-2.0 | Interface used by AndroidX |
 | MapLibre Native Android 13.6.0, gestures 0.0.4, GeoJSON/Turf 6.0.1 | `org.maplibre.gl:*` | BSD-2-Clause (SDK, gestures), Apache-2.0 (GeoJSON, Turf) | Offline map rendering with PMTiles. https://github.com/maplibre/maplibre-native |
 | OkHttp 4.12.0 | `com.squareup.okhttp3:*` | Apache-2.0 | MapLibre's HTTP client. Never used: the app has no INTERNET permission and MapLibre is set offline |
-| Okio 3.6.0 | `com.squareup.okio:*` | Apache-2.0 | I/O library used by OkHttp |
+| Okio 3.7.0 | `com.squareup.okio:*` | Apache-2.0 | I/O library used by OkHttp and Moshi |
 | Timber 5.0.1 | `com.jakewharton.timber:*` | Apache-2.0 | MapLibre's logging facade. MapLibre logging is turned off |
 | Gson | `com.google.code.gson:*` | Apache-2.0 | JSON for MapLibre GeoJSON; also used by AGP / lint |
+| valhalla-mobile 0.6.3, valhalla-models 0.5.2, valhalla-models-config 0.5.2 | `io.github.rallista:*` | MIT | On-device routing: Valhalla 3.6.3 compiled for Android, with Kotlin request and config models. https://github.com/Rallista/valhalla-mobile. Native code inside listed below |
+| osrm-openapi 0.0.10 | `com.stadiamaps:osrm-openapi` | BSD-3-Clause | OSRM response models, pulled in by valhalla-mobile. https://github.com/stadiamaps |
+| Moshi 1.15.1 | `com.squareup.moshi:*` | Apache-2.0 | JSON for valhalla-mobile's models (also pulls in kotlin-reflect). https://github.com/square/moshi |
+
+### Native code inside valhalla-mobile
+
+The AAR ships `libvalhalla-wrapper.so` for arm64-v8a, armeabi-v7a, x86_64 and x86, built from
+[valhalla/valhalla@e2f017b](https://github.com/valhalla/valhalla/commit/e2f017b16080f49203de245a211b09efab09cf72)
+(release 3.6.3) with `ENABLE_DATA_TOOLS`, `ENABLE_SERVICES`, `ENABLE_HTTP` and `ENABLE_TOOLS` off, so
+the tile-building code and its LGPL/MPL dependencies (OSM-binary, SpatiaLite, GEOS) are not included.
+Libraries linked in, from valhalla-mobile's `src/vcpkg.json`:
+
+| Component | Licence |
+|---|---|
+| Valhalla 3.6.3 | MIT |
+| Protocol Buffers | BSD-3-Clause |
+| Boost (algorithm, foreach, format, geometry, heap, optional, property-tree, range, tokenizer) | BSL-1.0 |
+| Abseil | Apache-2.0 |
+| LZ4 | BSD-2-Clause |
+| RapidJSON | MIT |
+| robin-hood-hashing, unordered_dense | MIT |
 
 ## Bundled map assets (shipped in the APK)
 
@@ -132,6 +154,4 @@ was committed. Total size: **1,335,997 bytes** (glyphs 1,011,353; sprites and th
 | Component | Licence | URL | Note |
 |---|---|---|---|
 | Ferrostar | BSD-3-Clause | https://github.com/stadiamaps/ferrostar | Navigation core and UI |
-| Valhalla | MIT | https://github.com/valhalla/valhalla | Routing engine |
-| valhalla-mobile | **to verify when added** | https://github.com/Rallista/valhalla-mobile | Valhalla bindings for Android |
 | SQLite (FTS5) | Public domain | https://sqlite.org | Offline search |

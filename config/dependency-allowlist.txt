@@ -23,6 +23,9 @@ com.squareup.okhttp3:*
 com.squareup.okio:*
 com.jakewharton.timber:*
 com.google.code.gson:*
+io.github.rallista:*
+com.stadiamaps:osrm-openapi
+com.squareup.moshi:*
 
 [build]
 com.android.tools.*:*

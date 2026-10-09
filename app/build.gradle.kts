@@ -96,6 +96,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.maplibre.android)
+    implementation(libs.valhalla.mobile)
 
     // Renders @Preview composables in Android Studio; debug builds only.
     debugImplementation(libs.androidx.compose.ui.tooling)
