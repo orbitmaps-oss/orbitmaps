@@ -12,15 +12,24 @@ data class FetchReport(val downloaded: Int, val alreadyHere: Int, val absent: In
 }
 
 /**
- * Valhalla graph tiles in a folder (Valhalla's tile_dir layout), downloaded on demand from [baseUrl].
+ * Files on Valhalla's tile grid in a folder, downloaded on demand from [baseUrl]: graph tiles in
+ * Valhalla's tile_dir layout ([extension] "gph"), or search shards ("sqlite") on the same grid.
  *
- * Requests carry only the tile path ([HttpFiles]). Tiles that don't exist on the server (open sea) are remembered for
- * [ABSENT_DAYS], so they aren't asked for again. Nothing is logged.
+ * Requests carry only the file path ([HttpFiles]). Files that don't exist on the server (open sea) are
+ * remembered for [ABSENT_DAYS], so they aren't asked for again. Nothing is logged.
  */
-class TileStore(val dir: File, private val baseUrl: String, private val clock: () -> Long = System::currentTimeMillis) {
-    fun file(tile: GraphTile) = File(dir, tile.path)
+class TileStore(
+    val dir: File,
+    private val baseUrl: String,
+    private val extension: String = "gph",
+    private val clock: () -> Long = System::currentTimeMillis
+) {
+    private fun relativePath(tile: GraphTile) =
+        "${tile.level}/${ValhallaTiles.fileSuffix(tile.level, tile.id)}.$extension"
 
-    private fun absentMarker(tile: GraphTile) = File(dir, "${tile.path}.absent")
+    fun file(tile: GraphTile) = File(dir, relativePath(tile))
+
+    private fun absentMarker(tile: GraphTile) = File(dir, "${relativePath(tile)}.absent")
 
     fun has(tile: GraphTile): Boolean = file(tile).isFile
 
@@ -57,7 +66,7 @@ class TileStore(val dir: File, private val baseUrl: String, private val clock: (
     }
 
     private fun fetch(tile: GraphTile): Fetch =
-        when (val result = HttpFiles.download("$baseUrl/${tile.path}", file(tile))) {
+        when (val result = HttpFiles.download("$baseUrl/${relativePath(tile)}", file(tile))) {
             is Download.Saved -> {
                 absentMarker(tile).delete()
                 Fetch.Saved(result.bytes)
@@ -100,7 +109,9 @@ class TileStore(val dir: File, private val baseUrl: String, private val clock: (
         return deleted
     }
 
-    private fun tileFiles(): List<File> = dir.walkTopDown().filter { it.isFile && it.name.endsWith(".gph") }.toList()
+    private fun tileFiles(): List<File> = dir.walkTopDown().filter {
+        it.isFile && it.name.endsWith(".$extension")
+    }.toList()
 
     companion object {
         const val ABSENT_DAYS = 30L

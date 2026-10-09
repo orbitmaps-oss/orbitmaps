@@ -12,7 +12,6 @@ import `in`.orbitmaps.app.map.InstallResult
 import `in`.orbitmaps.app.map.RegionInstaller
 import `in`.orbitmaps.app.map.installAsset
 import `in`.orbitmaps.core.model.LatLon
-import java.io.Closeable
 import java.io.File
 
 /** One place from the index. [id] is the row id in `places`. */
@@ -61,7 +60,7 @@ private suspend fun installIndex(context: Context, asset: String, installedPath:
  * pipeline/sample_region/build_sample_search.py). Read-only; all calls block, so use a background
  * dispatcher. One connection, used by one caller at a time. Queries are never logged.
  */
-class OfflineSearch(file: File) : Closeable {
+class OfflineSearch(file: File) : ShardSearch.Searchable {
     private val connection: SQLiteConnection = BundledSQLiteDriver().open(file.absolutePath, SQLITE_OPEN_READONLY)
     private val lock = Any()
 
@@ -89,12 +88,7 @@ class OfflineSearch(file: File) : Closeable {
      * Text search (every word as a prefix), optionally limited to a category group, ranked by
      * [SearchText.score]. With no words but a group, returns that group's places nearest [center].
      */
-    fun search(
-        text: String,
-        center: LatLon,
-        group: CategoryGroup? = null,
-        limit: Int = DEFAULT_LIMIT
-    ): List<SearchHit> {
+    override fun search(text: String, center: LatLon, group: CategoryGroup?, limit: Int): List<SearchHit> {
         val match = SearchText.ftsQuery(text)
         val (groupSql, groupArgs) = group?.sqlCondition() ?: ("" to emptyList())
         val candidates = synchronized(lock) {
@@ -123,7 +117,7 @@ class OfflineSearch(file: File) : Closeable {
             .take(limit)
     }
 
-    fun place(id: Long): IndexedPlace? = synchronized(lock) {
+    override fun place(id: Long): IndexedPlace? = synchronized(lock) {
         query("SELECT $COLUMNS, 0.0 FROM places p WHERE p.id = ?", emptyList(), longs = listOf(id)).firstOrNull()?.first
     }
 

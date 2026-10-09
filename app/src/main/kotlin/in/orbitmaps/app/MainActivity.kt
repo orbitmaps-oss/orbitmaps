@@ -36,12 +36,23 @@ class MainActivity : ComponentActivity() {
         setContent {
             val mapMode by environment.mapMode.collectAsStateWithLifecycle()
             val data by environment.settings.collectAsStateWithLifecycle()
+            val network by environment.network.collectAsStateWithLifecycle()
             LaunchedEffect(mapMode) { MapLibre.setConnected(mapMode == MapMode.Online) }
+            LaunchedEffect(mapMode, network) {
+                placesModel.places.onlineAllowed = mapMode == MapMode.Online
+                placesModel.places.unmetered = network.unmetered
+            }
             OrbitTheme {
                 AppShell(
                     state = shell.state,
                     update = shell::update,
-                    map = { bottomInset -> MapScreen(bottomInset = bottomInset, mode = mapMode) },
+                    map = { bottomInset ->
+                        MapScreen(
+                            bottomInset = bottomInset,
+                            mode = mapMode,
+                            onCenterChange = { placesModel.places.center = it }
+                        )
+                    },
                     places = placesModel.places,
                     online = mapMode == MapMode.Online,
                     data = data,

@@ -85,7 +85,7 @@ class TripRoutingTest {
     @Test
     fun absentTilesAreAskedForAgainAfterAMonth() {
         var now = 1_000_000_000_000L
-        val store = TileStore(tmp.newFolder("tiles"), baseUrl) { now }
+        val store = TileStore(tmp.newFolder("tiles"), baseUrl, clock = { now })
         val sea = GraphTile(1, 5)
         store.ensure(listOf(sea))
         val marker = File(store.dir, "${sea.path}.absent")
@@ -116,7 +116,7 @@ class TripRoutingTest {
     @Test
     fun cleanUpDeletesTheOldestTilesButKeepsSavedTrips() {
         var now = 1_000_000_000_000L
-        val store = TileStore(tmp.newFolder("tiles"), baseUrl) { now }
+        val store = TileStore(tmp.newFolder("tiles"), baseUrl, clock = { now })
         val tiles = (0 until 4).map { GraphTile(2, 1000 + it) }
         serve(tiles)
         tiles.forEachIndexed { i, tile ->

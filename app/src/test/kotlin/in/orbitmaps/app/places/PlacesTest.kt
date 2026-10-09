@@ -6,6 +6,7 @@ import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.search.CategoryGroup
 import `in`.orbitmaps.app.search.IndexedPlace
 import `in`.orbitmaps.app.search.SearchHit
+import `in`.orbitmaps.app.search.ShardHit
 import `in`.orbitmaps.app.ui.sample.SampleData
 import `in`.orbitmaps.core.model.LatLon
 import kotlinx.coroutines.runBlocking
@@ -30,14 +31,25 @@ class PlacesTest {
     fun indexIdsRoundTripPerSourceAndSampleIdsAreNotIndexIds() {
         assertEquals("osm:42", PlaceIds.forIndex(42))
         assertEquals("world:7", PlaceIds.forIndex(7, PlaceSource.World))
-        assertEquals(PlaceSource.Region to 42L, PlaceIds.parse("osm:42"))
-        assertEquals(PlaceSource.World to 7L, PlaceIds.parse("world:7"))
+        assertEquals(PlaceRef(PlaceSource.Region, 42), PlaceIds.parse("osm:42"))
+        assertEquals(PlaceRef(PlaceSource.World, 7), PlaceIds.parse("world:7"))
+        assertEquals("area:818660:5", PlaceIds.forArea(818660, 5))
+        assertEquals(PlaceRef(PlaceSource.Area, 5, cell = 818660), PlaceIds.parse("area:818660:5"))
         assertNull(PlaceIds.parse("cafe"))
         assertNull(PlaceIds.parse("osm:x"))
+        assertNull(PlaceIds.parse("area:5"))
+        assertNull(PlaceIds.parse("area:x:5"))
     }
 
-    private fun hit(name: String, lat: Double, lon: Double, score: Double, importance: Int = 30) = SearchHit(
-        IndexedPlace(1, "n1", name, null, "place=town", LatLon(lat, lon), importance, null),
+    private fun hit(
+        name: String,
+        lat: Double,
+        lon: Double,
+        score: Double,
+        importance: Int = 30,
+        osm: String = "n$name"
+    ) = SearchHit(
+        IndexedPlace(1, osm, name, null, "place=town", LatLon(lat, lon), importance, null),
         distanceKm = 0.0,
         score = score
     )
@@ -47,8 +59,8 @@ class PlacesTest {
         val region = listOf(hit("Panaji", 15.4989, 73.8278, score = 5.0))
         val world = listOf(hit("Panaji", 15.50, 73.83, score = 9.0), hit("Mumbai", 19.07, 72.88, score = 7.0))
         val merged = mergeResults(region, world, limit = 10)
-        assertEquals(listOf("Mumbai", "Panaji"), merged.map { it.second.place.name })
-        assertEquals(listOf(PlaceSource.World, PlaceSource.Region), merged.map { it.first })
+        assertEquals(listOf("Mumbai", "Panaji"), merged.map { it.hit.place.name })
+        assertEquals(listOf(PlaceSource.World, PlaceSource.Region), merged.map { it.source })
     }
 
     @Test
@@ -63,7 +75,22 @@ class PlacesTest {
         val region = listOf(hit("A", 15.0, 73.0, score = 3.0), hit("B", 15.1, 73.1, score = 1.0))
         val world = listOf(hit("C", 19.0, 72.0, score = 3.0))
         val merged = mergeResults(region, world, limit = 2)
-        assertEquals(listOf("A", "C"), merged.map { it.second.place.name })
+        assertEquals(listOf("A", "C"), merged.map { it.hit.place.name })
+    }
+
+    @Test
+    fun areaResultsTheRegionAlreadyHasAreDroppedAndKeepTheirCell() {
+        val region = listOf(hit("Cafe A", 15.49, 73.82, score = 2.0, osm = "n10"))
+        val area = listOf(
+            ShardHit(818660, hit("Cafe A", 15.49, 73.82, score = 9.0, osm = "n10")),
+            ShardHit(818660, hit("Cafe B", 15.48, 73.81, score = 5.0, osm = "n11"))
+        )
+        val world = listOf(hit("Cafe B", 15.48, 73.81, score = 1.0))
+        val merged = mergeResults(region, world, limit = 10, area = area)
+        assertEquals(listOf("Cafe B", "Cafe A"), merged.map { it.hit.place.name })
+        assertEquals(listOf(PlaceSource.Area, PlaceSource.Region), merged.map { it.source })
+        assertEquals("area:818660:1", merged.first().id)
+        assertEquals("osm:1", merged.last().id)
     }
 
     @Test

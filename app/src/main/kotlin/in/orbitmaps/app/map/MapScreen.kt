@@ -22,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,7 @@ import `in`.orbitmaps.app.Attribution
 import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.net.MapMode
 import `in`.orbitmaps.app.net.OnlineData
+import `in`.orbitmaps.core.model.LatLon
 import java.io.IOException
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
@@ -73,9 +75,15 @@ private sealed interface MapState {
  * ([SampleRegion] for now) fully offline.
  *
  * @param bottomInset extra space below the attribution, for a bottom sheet drawn over the map.
+ * @param onCenterChange called with the map centre when the camera stops moving (stays on the phone).
  */
 @Composable
-fun MapScreen(modifier: Modifier = Modifier, bottomInset: Dp = 0.dp, mode: MapMode = MapMode.Offline) {
+fun MapScreen(
+    modifier: Modifier = Modifier,
+    bottomInset: Dp = 0.dp,
+    mode: MapMode = MapMode.Offline,
+    onCenterChange: (LatLon) -> Unit = {}
+) {
     val context = LocalContext.current.applicationContext
     var state by remember { mutableStateOf<MapState>(MapState.Loading) }
     LaunchedEffect(mode) {
@@ -90,6 +98,7 @@ fun MapScreen(modifier: Modifier = Modifier, bottomInset: Dp = 0.dp, mode: MapMo
             is MapState.Ready -> OfflineMap(
                 current.styleJson,
                 current.limitToRegion,
+                onCenterChange = onCenterChange,
                 onLoadFailed = { state = MapState.Failed }
             )
             MapState.RegionMissing -> CenteredMessage(R.string.map_region_missing)
@@ -132,7 +141,13 @@ private suspend fun loadStreamingStyle(context: Context): MapState = withContext
 }
 
 @Composable
-private fun OfflineMap(styleJson: String, limitToRegion: Boolean, onLoadFailed: () -> Unit) {
+private fun OfflineMap(
+    styleJson: String,
+    limitToRegion: Boolean,
+    onCenterChange: (LatLon) -> Unit,
+    onLoadFailed: () -> Unit
+) {
+    val currentOnCenterChange = rememberUpdatedState(onCenterChange)
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val limiter = remember { RegionCameraLimiter() }
@@ -156,6 +171,10 @@ private fun OfflineMap(styleJson: String, limitToRegion: Boolean, onLoadFailed: 
                 limiter.attach(this, map)
                 addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> limiter.onViewportChanged() }
                 map.addOnCameraMoveListener(limiter::onCameraMoved)
+                map.addOnCameraIdleListener {
+                    val target = map.cameraPosition.target ?: return@addOnCameraIdleListener
+                    LatLon.orNull(target.latitude, target.longitude)?.let { currentOnCenterChange.value(it) }
+                }
             }
         }
     }

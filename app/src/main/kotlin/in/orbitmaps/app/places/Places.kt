@@ -12,6 +12,8 @@ import `in`.orbitmaps.app.search.IndexedPlace
 import `in`.orbitmaps.app.search.OfflineSearch
 import `in`.orbitmaps.app.search.SearchHit
 import `in`.orbitmaps.app.search.SearchText
+import `in`.orbitmaps.app.search.ShardHit
+import `in`.orbitmaps.app.search.ShardSearch
 import `in`.orbitmaps.app.search.installSampleSearch
 import `in`.orbitmaps.app.search.installWorldPlaces
 import `in`.orbitmaps.app.ui.sample.SampleData
@@ -50,44 +52,77 @@ interface PlaceRepository {
     suspend fun place(id: String): PlaceItem?
 }
 
-/** Which offline index a place comes from. */
+/** Which index a place comes from. */
 enum class PlaceSource(val prefix: String) {
+    /** A downloaded region (the sample region for now). */
     Region("osm:"),
-    World("world:")
+
+    /** The bundled world places index. */
+    World("world:"),
+
+    /** An area search shard, fetched on demand and cached. */
+    Area("area:")
 }
 
-/** Ids of places from the offline indexes, as used in [in.orbitmaps.app.ui.shell.Destination]. */
-object PlaceIds {
-    fun forIndex(rowId: Long, source: PlaceSource = PlaceSource.Region) = "${source.prefix}$rowId"
+/** A parsed place id: the index, the row in it, and for [PlaceSource.Area] the shard's cell. */
+data class PlaceRef(val source: PlaceSource, val rowId: Long, val cell: Int? = null)
 
-    /** The index and row id, or null for sample ids and malformed ids. */
-    fun parse(id: String): Pair<PlaceSource, Long>? {
+/** Ids of places from the indexes, as used in [in.orbitmaps.app.ui.shell.Destination]. */
+object PlaceIds {
+    fun forIndex(rowId: Long, source: PlaceSource = PlaceSource.Region): String {
+        require(source != PlaceSource.Area) { "area ids need a cell: use forArea" }
+        return "${source.prefix}$rowId"
+    }
+
+    fun forArea(cell: Int, rowId: Long) = "${PlaceSource.Area.prefix}$cell:$rowId"
+
+    /** The index and row, or null for sample ids and malformed ids. */
+    fun parse(id: String): PlaceRef? {
         val source = PlaceSource.entries.firstOrNull { id.startsWith(it.prefix) } ?: return null
-        val rowId = id.removePrefix(source.prefix).toLongOrNull() ?: return null
-        return source to rowId
+        val rest = id.removePrefix(source.prefix)
+        if (source != PlaceSource.Area) return rest.toLongOrNull()?.let { PlaceRef(source, it) }
+        val cell = rest.substringBefore(':', "").toIntOrNull() ?: return null
+        val rowId = rest.substringAfter(':', "").toLongOrNull() ?: return null
+        return PlaceRef(source, rowId, cell)
     }
 }
 
-/** A world result this close to a region result with the same name is the same place. */
+/** A world result this close to another result with the same name is the same place. */
 private const val SAME_PLACE_KM = 10.0
 
+/** One merged result: where it came from, the hit, and the shard cell for area results. */
+data class MergedHit(val source: PlaceSource, val hit: SearchHit, val cell: Int? = null) {
+    val id: String get() = if (cell !=
+        null
+    ) {
+        PlaceIds.forArea(cell, hit.place.id)
+    } else {
+        PlaceIds.forIndex(hit.place.id, source)
+    }
+}
+
 /**
- * Merges region and world results: drops world places that the region index already has, then keeps
- * the best [limit] by score. Region places come first on a tie.
+ * Merges region, area-shard and world results: area results that the downloaded region also has
+ * (same OSM object) are dropped, and so are world places another result already names nearby. Keeps
+ * the best [limit] by score; on a tie, region before area before world.
  */
 internal fun mergeResults(
     region: List<SearchHit>,
     world: List<SearchHit>,
-    limit: Int
-): List<Pair<PlaceSource, SearchHit>> {
+    limit: Int,
+    area: List<ShardHit> = emptyList()
+): List<MergedHit> {
+    val regionOsm = region.map { it.place.osm }.toSet()
+    val local = region.map { MergedHit(PlaceSource.Region, it) } +
+        area.filterNot { it.hit.place.osm in regionOsm }.map { MergedHit(PlaceSource.Area, it.hit, it.cell) }
     val distinctWorld = world.filterNot { w ->
-        region.any { r ->
-            r.place.name.equals(w.place.name, ignoreCase = true) &&
-                r.place.location.distanceKmTo(w.place.location) < SAME_PLACE_KM
+        local.any { r ->
+            r.hit.place.name.equals(w.place.name, ignoreCase = true) &&
+                r.hit.place.location.distanceKmTo(w.place.location) < SAME_PLACE_KM
         }
     }
-    return (region.map { PlaceSource.Region to it } + distinctWorld.map { PlaceSource.World to it })
-        .sortedWith(compareByDescending<Pair<PlaceSource, SearchHit>> { it.second.score }.thenBy { it.first.ordinal })
+    return (local + distinctWorld.map { MergedHit(PlaceSource.World, it) })
+        .sortedWith(compareByDescending<MergedHit> { it.hit.score }.thenBy { it.source.ordinal })
         .take(limit)
 }
 
@@ -117,14 +152,24 @@ class SamplePlaces(private val resolve: (Int) -> String) : PlaceRepository {
 }
 
 /**
- * The app's places: the installed region index and the world places index when the build has them,
- * otherwise the sample places. Distances are measured from the region centre until the app knows the
- * map centre or the user's position. Nothing here uses the network or logs a query.
+ * The app's places: the installed region index, area search shards around the map centre (fetched
+ * when online use is allowed) and the bundled world places index, otherwise the sample places.
+ * Everything is searched on the phone; queries never leave it and are never logged.
  */
-class AppPlaces(private val application: Application, private val center: LatLon = SampleRegion.center) :
+class AppPlaces(private val application: Application) :
     PlaceRepository,
     Closeable {
+    /** Where results are ranked from and shards are fetched for: the map centre, kept up to date by the map. */
+    @Volatile var center: LatLon = SampleRegion.center
+
+    /** Whether fetching our files is allowed and possible now ("Browse undownloaded areas" and online). */
+    @Volatile var onlineAllowed: Boolean = false
+
+    /** On Wi-Fi, the neighbouring shards are fetched too. */
+    @Volatile var unmetered: Boolean = false
+
     private val sample = SamplePlaces(application::getString)
+    private val shards = ShardSearch(ShardSearch.defaultRoot(application.filesDir))
     private val mutex = Mutex()
     private var opened = false
     private val indexes = mutableMapOf<PlaceSource, OfflineSearch>()
@@ -152,31 +197,42 @@ class AppPlaces(private val application: Application, private val center: LatLon
 
     override suspend fun search(text: String, group: CategoryGroup?): SearchResults {
         val indexes = indexes()
-        if (indexes.isEmpty()) return sample.search(text, group)
-        if (text.isBlank() && group == null) return SearchResults(emptyList(), fromOfflineIndex = true)
-        val merged = withContext(Dispatchers.IO) {
-            val region = indexes[PlaceSource.Region]?.search(text, center, group).orEmpty()
-            // The world index only has cities and towns, so it can't answer category searches.
-            val world = if (group == null) indexes[PlaceSource.World]?.search(text, center).orEmpty() else emptyList()
-            mergeResults(region, world, OfflineSearch.DEFAULT_LIMIT)
+        if (text.isBlank() && group == null) {
+            return if (indexes.isEmpty()) {
+                sample.search(
+                    text,
+                    group
+                )
+            } else {
+                SearchResults(emptyList(), fromOfflineIndex = true)
+            }
         }
-        return SearchResults(
-            merged.map { (source, hit) ->
-                item(source, hit.place, hit.distanceKm)
-            },
-            fromOfflineIndex = true
-        )
+        val from = center
+        val merged = withContext(Dispatchers.IO) {
+            val region = indexes[PlaceSource.Region]?.search(text, from, group).orEmpty()
+            val area = shards.search(text, from, group, fetch = onlineAllowed, neighbours = unmetered)
+            // The world index only has cities and towns, so it can't answer category searches.
+            val world = if (group == null) indexes[PlaceSource.World]?.search(text, from).orEmpty() else emptyList()
+            mergeResults(region, world, OfflineSearch.DEFAULT_LIMIT, area)
+        }
+        if (indexes.isEmpty() && merged.isEmpty()) return sample.search(text, group)
+        return SearchResults(merged.map { item(it.id, it.hit.place, it.hit.distanceKm) }, fromOfflineIndex = true)
     }
 
     override suspend fun place(id: String): PlaceItem? {
-        val (source, rowId) = PlaceIds.parse(id) ?: return sample.place(id)
-        val index = indexes()[source] ?: return null
-        val place = withContext(Dispatchers.IO) { index.place(rowId) } ?: return null
-        return item(source, place, center.distanceKmTo(place.location))
+        val ref = PlaceIds.parse(id) ?: return sample.place(id)
+        val place = withContext(Dispatchers.IO) {
+            if (ref.source == PlaceSource.Area) {
+                shards.place(checkNotNull(ref.cell), ref.rowId)
+            } else {
+                indexes()[ref.source]?.place(ref.rowId)
+            }
+        } ?: return null
+        return item(id, place, center.distanceKmTo(place.location))
     }
 
-    private fun item(source: PlaceSource, place: IndexedPlace, distanceKm: Double) = PlaceItem(
-        id = PlaceIds.forIndex(place.id, source),
+    private fun item(id: String, place: IndexedPlace, distanceKm: Double) = PlaceItem(
+        id = id,
         name = place.name,
         category = SearchText.categoryLabel(place.category),
         distanceKm = distanceKm,
@@ -186,6 +242,7 @@ class AppPlaces(private val application: Application, private val center: LatLon
     override fun close() {
         indexes.values.forEach { it.close() }
         indexes.clear()
+        shards.close()
     }
 }
 
