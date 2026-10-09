@@ -40,7 +40,8 @@ These rules are binding for every change, human or AI. If a task conflicts with 
 ## 5. Stack
 - Android: Kotlin, Jetpack Compose, minSdk 26.
 - Map rendering: MapLibre Native with PMTiles.
-- Routing: valhalla-mobile (on-device Valhalla), navigation UI/logic: Ferrostar.
+- Routing: valhalla-mobile (on-device Valhalla); navigation: our own Kotlin logic on Valhalla's route and maneuvers
+  (Ferrostar was dropped, see `docs/decisions/0001-own-navigation-logic.md`).
 - Search: SQLite FTS5.
 - Backend: Cloudflare Workers + D1 + R2 (in `pipeline/workers/`).
 - Package / namespace: `in.orbitmaps.app`.

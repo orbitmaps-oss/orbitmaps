@@ -10,7 +10,7 @@ A **region pack** is everything the app needs for one area, with no network:
 |---|---|---|
 | Map tiles | PMTiles (vector) | MapLibre Native |
 | Search index | SQLite database with an FTS5 table | `core/search` |
-| Routing tiles | Valhalla tile archive | valhalla-mobile, with Ferrostar for navigation |
+| Routing tiles | Valhalla tile archive | valhalla-mobile, with our own navigation logic |
 | Manifest | JSON (version, bounds, checksums, licences) | `core/regionpack` |
 
 Packs are built by `pipeline/` from OpenStreetMap extracts and served from Cloudflare R2. A
@@ -84,7 +84,7 @@ Outside downloaded regions, `TripRouting` routes with the same engine from a **t
 
 The server sees which tiles are fetched, never the start, destination or route (PRIVACY.md).
 
-The code lives in `app/.../routing/` and moves to `core/routing/` with Ferrostar navigation.
+The code lives in `app/.../routing/` and moves to `core/routing/` once navigation needs it there.
 
 ## Modules
 
@@ -93,7 +93,7 @@ app/                  Android app: Compose UI, navigation, DI wiring (in.orbitma
 core/model/           Pure Kotlin domain types (no Android dependencies)
 core/map/             (planned) MapLibre + PMTiles integration
 core/search/          (planned) FTS5 search over the pack's index
-core/routing/         (planned) valhalla-mobile + Ferrostar
+core/routing/         (planned) valhalla-mobile + navigation logic
 core/regionpack/      (planned) download, verify, install, update packs
 pipeline/             (planned) pack build tooling; pipeline/workers/ = Cloudflare backend
 styles/               map style JSON, sprites, glyph sources

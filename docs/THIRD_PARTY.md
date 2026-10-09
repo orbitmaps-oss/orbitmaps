@@ -154,4 +154,3 @@ was committed. Total size: **1,335,997 bytes** (glyphs 1,011,353; sprites and th
 
 | Component | Licence | URL | Note |
 |---|---|---|---|
-| Ferrostar | BSD-3-Clause | https://github.com/stadiamaps/ferrostar | Navigation core and UI |

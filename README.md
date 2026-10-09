@@ -18,7 +18,7 @@ you download once. No account, no tracking, no ads.
 
 ## Stack
 
-Kotlin · Jetpack Compose · MapLibre Native (PMTiles) · valhalla-mobile · Ferrostar · SQLite FTS5 ·
+Kotlin · Jetpack Compose · MapLibre Native (PMTiles) · valhalla-mobile · SQLite FTS5 ·
 Cloudflare Workers + D1 + R2. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Repository layout
