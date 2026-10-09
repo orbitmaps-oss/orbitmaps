@@ -2,12 +2,12 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 <!-- Debug-only developer screen; not translated. -->
 <resources>
-    <string name="routing_debug_label" translatable="false">Orbit routing test</string>
-    <string name="routing_debug_title" translatable="false">On-device routing test</string>
-    <string name="routing_debug_intro" translatable="false">Builds the Valhalla engine from the bundled Panaji tiles and routes between fixed sample points, fully offline. Nothing is logged or sent.</string>
+    <string name="routing_debug_label" translatable="false">Orbit data test</string>
+    <string name="routing_debug_title" translatable="false">On-device routing and search test</string>
+    <string name="routing_debug_intro" translatable="false">Builds the Valhalla engine from the bundled Panaji tiles, routes between fixed sample points and runs sample searches on the bundled index, fully offline. Nothing is logged or sent.</string>
     <string name="routing_debug_run" translatable="false">Run test</string>
     <string name="routing_debug_running" translatable="false">Running…</string>
-    <string name="routing_debug_not_bundled" translatable="false">No routing tiles in this build. Download the panaji-region-data artifact from the Sample region data workflow, unzip it into pipeline/out/sample-region/ and rebuild.</string>
+    <string name="routing_debug_not_bundled" translatable="false">No routing tiles or search index in this build. Download the panaji-region-data artifact from the Sample region data workflow, unzip it into pipeline/out/sample-region/ and rebuild.</string>
     <string name="routing_debug_failed" translatable="false">Setup failed: %1$s</string>
     <string name="routing_debug_setup" translatable="false">Install and config: %1$d ms</string>
     <string name="routing_debug_engine" translatable="false">Engine start: %1$d ms</string>
@@ -15,6 +15,8 @@
     <string name="routing_debug_tiles" translatable="false">Routing tiles: %1$.1f MB</string>
     <!-- %1$s route name, %2$.1f km, %3$.0f min, %4$d maneuvers, %5$d ms median, %6$d ms first -->
     <string name="routing_debug_route" translatable="false">%1$s: %2$.1f km, %3$.0f min, turns: %4$d · median %5$d ms, first %6$d ms</string>
+    <!-- %1$s query, %2$d results, %3$d ms median, %4$d ms first -->
+    <string name="search_debug_query" translatable="false">Search “%1$s”: results: %2$d · median %3$d ms, first %4$d ms</string>
     <string name="routing_debug_route_error" translatable="false">%1$s: %2$s</string>
     <string name="routing_debug_route_city" translatable="false">Panaji centre to Miramar</string>
     <string name="routing_debug_route_bridge" translatable="false">Panaji to Porvorim (bridge)</string>

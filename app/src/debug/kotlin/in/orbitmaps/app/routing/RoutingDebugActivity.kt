@@ -34,6 +34,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.map.SampleRegion
+import `in`.orbitmaps.app.search.OfflineSearch
+import `in`.orbitmaps.app.search.installSampleSearch
 import `in`.orbitmaps.app.ui.theme.OrbitTheme
 import `in`.orbitmaps.core.model.LatLon
 import java.io.File
@@ -42,8 +45,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Debug-only benchmark for the month-1 routing gate (plan step 3): engine start time, route time and
- * memory on a real phone, from the bundled sample tiles. Results are shown on screen only.
+ * Debug-only benchmark for the month-1 gate (plan step 3): routing engine start time, route time and
+ * memory, and offline search time, on a real phone from the bundled sample region. Results are shown
+ * on screen only.
  */
 class RoutingDebugActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,7 +95,8 @@ private sealed interface BenchState {
         val pssBeforeMb: Int,
         val pssAfterMb: Int,
         val nativeGrowthMb: Int,
-        val routes: List<RouteResult>
+        val routes: List<RouteResult>,
+        val searches: List<SearchTiming>
     ) : BenchState
 }
 
@@ -147,6 +152,17 @@ private fun Results(state: BenchState) {
             Text(
                 stringResource(R.string.routing_debug_memory, state.pssBeforeMb, state.pssAfterMb, state.nativeGrowthMb)
             )
+            state.searches.forEach { timing ->
+                Text(
+                    stringResource(
+                        R.string.search_debug_query,
+                        timing.query,
+                        timing.results,
+                        timing.medianMs,
+                        timing.firstMs
+                    )
+                )
+            }
             state.routes.forEach { result ->
                 val name = stringResource(result.name)
                 when (result) {
@@ -189,6 +205,7 @@ private suspend fun runBenchmark(context: Context): BenchState = withContext(Dis
     }
     val engineMs = SystemClock.elapsedRealtime() - engineStart
     val routes = router.use { SampleRoutes.map { timeRoute(it, router) } }
+    val searches = timeSearches(context)
     BenchState.Done(
         setupMs = setupMs,
         engineMs = engineMs,
@@ -196,8 +213,31 @@ private suspend fun runBenchmark(context: Context): BenchState = withContext(Dis
         pssBeforeMb = pssBefore,
         pssAfterMb = pssMb(),
         nativeGrowthMb = ((Debug.getNativeHeapAllocatedSize() - nativeBefore) / MB).toInt(),
-        routes = routes
+        routes = routes,
+        searches = searches
     )
+}
+
+private data class SearchTiming(val query: String, val results: Int, val firstMs: Long, val medianMs: Long)
+
+/** Typical queries, typed partially and in full, against the bundled index. Empty if none is bundled. */
+private val SampleQueries = listOf("pan", "panaji", "miramar beach", "caf", "hospital", "rua de")
+
+private suspend fun timeSearches(context: Context): List<SearchTiming> {
+    val file = installSampleSearch(context) ?: return emptyList()
+    return OfflineSearch(file).use { search ->
+        SampleQueries.map { query ->
+            val times = mutableListOf<Long>()
+            var count = 0
+            repeat(TIMED_RUNS + 1) {
+                val start = SystemClock.elapsedRealtime()
+                count = search.search(query, SampleRegion.center).size
+                times += SystemClock.elapsedRealtime() - start
+            }
+            val warm = times.drop(1).sorted()
+            SearchTiming(query, count, firstMs = times.first(), medianMs = warm[warm.size / 2])
+        }
+    }
 }
 
 /** One cold route, then [TIMED_RUNS] warm ones; reports the first and the median. */

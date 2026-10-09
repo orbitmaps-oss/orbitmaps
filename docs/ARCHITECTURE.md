@@ -50,8 +50,8 @@ The map code lives in `app/.../map/` for now and moves to `core/map/` when a sec
    other build path under app storage.
 3. `OfflineRouter` wraps one valhalla-mobile engine (it memory-maps the tar; reuse it, close it) and
    sends raw JSON requests, parsed by `ValhallaJson`. No network, no logging of points.
-4. Debug builds add an **Orbit routing test** launcher entry (`app/src/debug/`) that measures engine
-   start, route time and memory on the phone, for the month-1 gate.
+4. Debug builds add an **Orbit data test** launcher entry (`app/src/debug/`) that measures engine
+   start, route time, memory and search time on the phone, for the month-1 gate.
 
 The code lives in `app/.../routing/` and moves to `core/routing/` with Ferrostar navigation.
 
