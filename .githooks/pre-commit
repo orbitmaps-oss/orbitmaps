@@ -1,0 +1,31 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Runs before every commit, from the command line or Android Studio's Commit button.
+# Enable once per clone: git config core.hooksPath .githooks
+set -eu
+. "$(git rev-parse --show-toplevel)/.githooks/common.sh"
+
+# AGENTS.md 8: work on a branch, never directly on main.
+if [ "$(git symbolic-ref --short -q HEAD || true)" = "main" ]; then
+    fail "You are committing on main. Create a branch first: git switch -c feature/<name>"
+fi
+
+# No secrets, keystores or IDE files in the index.
+python=$(python_cmd)
+result=$("$python" scripts/check_forbidden_files.py) || fail "$result"
+
+# AGENTS.md 4: new source files start with an SPDX licence line.
+missing=$(git diff --cached --name-only --diff-filter=A -- \
+    '*.kt' '*.kts' '*.py' '*.sh' '*.mjs' '*.js' '*.ts' | while IFS= read -r file; do
+    git show ":$file" | head -n 3 | grep -q 'SPDX-License-Identifier' || echo "  $file"
+done)
+if [ -n "$missing" ]; then
+    fail "New files without '// SPDX-License-Identifier: GPL-3.0-or-later' near the top:
+$missing"
+fi
+
+# Kotlin style, only when Kotlin files are staged (checks the working tree).
+if git diff --cached --name-only --diff-filter=ACMR -- '*.kt' '*.kts' | grep -q .; then
+    echo "pre-commit: running ktlintCheck..."
+    ./gradlew --quiet ktlintCheck || fail "ktlint failed. Fix it with: ./gradlew ktlintFormat"
+fi

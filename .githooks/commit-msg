@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Rejects commits without a DCO sign-off, which CI would reject later (CONTRIBUTING.md).
+# The hook doesn't add the line itself: signing off is your own statement under the DCO.
+set -eu
+. "$(git rev-parse --show-toplevel)/.githooks/common.sh"
+
+# Merge commits are exempt, as in CI.
+if [ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]; then
+    exit 0
+fi
+
+if ! grep -qE '^Signed-off-by: .+ <.+>' "$1"; then
+    fail "Commit message has no 'Signed-off-by:' line.
+Use 'git commit -s', or tick 'Sign-off commit' in Android Studio's commit options (gear icon)."
+fi
