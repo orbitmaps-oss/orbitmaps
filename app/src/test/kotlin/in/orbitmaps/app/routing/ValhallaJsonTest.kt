@@ -134,4 +134,33 @@ class ValhallaJsonTest {
         assertThrows(RoutingException::class.java) { ValhallaJson.parseRoute("{}") }
         assertThrows(RoutingException::class.java) { ValhallaJson.parseRoute("""{"trip":{"legs":[]}}""") }
     }
+
+    @Test
+    fun tileDirConfigReadsAFolderInsteadOfATar() {
+        val tileDir = File("/phone/files/routing/valhalla-3.6.3/tiles")
+        val config = Json.parseToJsonElement(ValhallaJson.tileDirConfig(template, tileDir, dataDir)).jsonObject
+        val mjolnir = config.getValue("mjolnir").jsonObject
+        assertEquals(tileDir.absolutePath, mjolnir.getValue("tile_dir").jsonPrimitive.content)
+        assertFalse("tile_extract" in mjolnir)
+        assertFalse("traffic_extract" in mjolnir)
+        assertEquals(dataDir.absolutePath + "/admins.sqlite", mjolnir.getValue("admin").jsonPrimitive.content)
+        assertFalse(config.toString().contains("\"/data/"))
+    }
+
+    @Test
+    fun routeShapeIsDecodedAcrossLegs() {
+        val response = """
+            {"trip":{"legs":[{"maneuvers":[{"type":1}],"shape":"_p~iF~ps|U"},{"maneuvers":[],"shape":"_ulLnnqC"}],
+              "summary":{"length":1.0,"time":60.0}}}
+        """.trimIndent()
+        val shape = ValhallaJson.parseRoute(response).shape
+        assertEquals(2, shape.size)
+        assertEquals(3.85, shape[0].latitude, 1e-9)
+    }
+
+    @Test
+    fun malformedShapeIsARoutingError() {
+        val response = """{"trip":{"legs":[{"shape":"_p~iF~ps|U_"}],"summary":{"length":1.0,"time":60.0}}}"""
+        assertThrows(RoutingException::class.java) { ValhallaJson.parseRoute(response) }
+    }
 }

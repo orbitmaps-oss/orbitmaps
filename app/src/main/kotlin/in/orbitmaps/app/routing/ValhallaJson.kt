@@ -25,8 +25,13 @@ enum class Costing(val valhallaName: String) {
     Walk("pedestrian")
 }
 
-/** The parts of a Valhalla route that the prototype needs. */
-data class RouteSummary(val lengthKm: Double, val timeSeconds: Double, val maneuvers: Int)
+/** The parts of a Valhalla route the app needs. [shape] is the route line, for the trip corridor. */
+data class RouteSummary(
+    val lengthKm: Double,
+    val timeSeconds: Double,
+    val maneuvers: Int,
+    val shape: List<LatLon> = emptyList()
+)
 
 /** Valhalla answered with an error, e.g. no road near a point (code 171) or no route (442). */
 class RoutingException(message: String) : Exception(message)
@@ -53,6 +58,20 @@ object ValhallaJson {
         val mjolnir = requireNotNull(rewritten["mjolnir"]?.jsonObject) { "config has no mjolnir section" }
         val withTar = JsonObject(mjolnir + ("tile_extract" to JsonPrimitive(tileExtract.absolutePath)))
         return JsonObject(rewritten + ("mjolnir" to withTar)).toString()
+    }
+
+    /**
+     * A config that reads tiles from a folder ([tileDir], Valhalla's tile_dir layout) instead of one tar,
+     * for tiles downloaded on demand. Other build paths move under [dataDir], as in [deviceConfig].
+     */
+    fun tileDirConfig(template: String, tileDir: File, dataDir: File): String {
+        val root = json.parseToJsonElement(template).jsonObject
+        val rewritten = rewritePaths(root, dataDir.absolutePath.trimEnd('/') + "/") as JsonObject
+        val mjolnir = requireNotNull(rewritten["mjolnir"]?.jsonObject) { "config has no mjolnir section" }
+        val withDir = JsonObject(
+            mjolnir - "tile_extract" - "traffic_extract" + ("tile_dir" to JsonPrimitive(tileDir.absolutePath))
+        )
+        return JsonObject(rewritten + ("mjolnir" to withDir)).toString()
     }
 
     private fun rewritePaths(element: JsonElement, deviceDir: String): JsonElement = when (element) {
@@ -92,13 +111,18 @@ object ValhallaJson {
         }
         val trip = root["trip"]?.jsonObject ?: throw RoutingException("response has no trip")
         val summary = trip["summary"]?.jsonObject ?: throw RoutingException("trip has no summary")
-        val maneuvers = (trip["legs"] as? JsonArray).orEmpty().sumOf { leg ->
-            (leg.jsonObject["maneuvers"] as? JsonArray)?.size ?: 0
+        val legs = (trip["legs"] as? JsonArray).orEmpty().map { it.jsonObject }
+        val maneuvers = legs.sumOf { leg -> (leg["maneuvers"] as? JsonArray)?.size ?: 0 }
+        val shape = try {
+            legs.flatMap { leg -> leg["shape"]?.jsonPrimitive?.contentOrNull?.let(Polyline6::decode).orEmpty() }
+        } catch (e: IllegalArgumentException) {
+            throw RoutingException("route shape is malformed")
         }
         return RouteSummary(
             lengthKm = summary.number("length"),
             timeSeconds = summary.number("time"),
-            maneuvers = maneuvers
+            maneuvers = maneuvers,
+            shape = shape
         )
     }
 

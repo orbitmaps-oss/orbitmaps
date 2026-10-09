@@ -23,7 +23,10 @@ import kotlinx.coroutines.flow.stateIn
 data class DataSettings(
     /** Stream map tiles for areas that aren't downloaded (PRIVACY.md: "Browse undownloaded areas"). */
     val streamMap: Boolean = true,
-    /** Download routing tiles, search shards and region updates only on unmetered networks. */
+    /**
+     * Download region packs and their daily updates only on unmetered networks. Tiles for a trip being
+     * planned or driven are small and always fetched, so routing works on mobile data.
+     */
     val wifiOnlyDownloads: Boolean = true
 )
 

@@ -9,7 +9,6 @@ import `in`.orbitmaps.app.map.InstallResult
 import `in`.orbitmaps.app.map.RegionInstaller
 import `in`.orbitmaps.app.map.installAsset
 import `in`.orbitmaps.core.model.LatLon
-import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
@@ -72,10 +71,10 @@ suspend fun setUpSampleRouting(context: Context): RoutingSetup {
  * reuse it for every request, and close it when done. All calls block: use a background dispatcher.
  * Nothing here logs or sends the points it is given.
  */
-class OfflineRouter(configFile: File) : Closeable {
+class OfflineRouter(configFile: File) : TripRouting.Router {
     private val valhalla = Valhalla(configFile.absolutePath)
 
-    fun route(from: LatLon, to: LatLon, costing: Costing = Costing.Car): RouteSummary {
+    override fun route(from: LatLon, to: LatLon, costing: Costing): RouteSummary {
         val response = try {
             valhalla.routeRaw(ValhallaJson.routeRequest(from, to, costing))
         } catch (e: ValhallaException) {
