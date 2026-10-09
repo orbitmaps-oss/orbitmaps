@@ -59,7 +59,33 @@ and tile SHA-256 and the ODbL licence. It also runs on Linux or WSL with Docker 
 `sample_region/build_sample_search.py` then keeps every named object in the same extract, gives
 each one all its OSM names (every language, alternative and old names), a category, a point and an
 importance rank, merges street segments per name and area, and writes `places` plus a contentless
-FTS5 table (`unicode61`, accents removed, prefix indexes) with licence and attribution in `meta`.
+FTS5 table (see "Search index format" below) with licence and attribution in `meta`.
+
+### World places index
+
+Cities and towns everywhere, so search finds "Mumbai" or "Paris" before any region is downloaded.
+Needs only Python, so it runs on any machine:
+
+```sh
+python pipeline/sample_region/build_world_places.py
+```
+
+It downloads Natural Earth's `ne_10m_populated_places.geojson` (public domain, release v5.1.2,
+about 19 MB), checks its **git blob SHA-1 and size before parsing**, and writes
+`pipeline/out/world/assets/places/world-places.sqlite` (about 3.3 MB, 2 MB in the APK): every
+place with all its names (26 languages plus alternatives such as "Bombay"), "region, country"
+as detail, and an importance from Natural Earth's scale rank and capital status. Every build
+bundles it when present.
+
+### Search index format (shared)
+
+Both indexes use the schema in `build_sample_search.py` (version 2): `places` (name, English name,
+OSM-style category, point, importance, detail), a contentless FTS5 table `places_fts` and `meta`.
+The FTS5 tokenizer is `unicode61 remove_diacritics 2 categories 'L* N* Co M*'`: accents are
+folded ("ourem" finds "Ourém"), and combining marks stay inside words, which Indic scripts need
+(with the default tokenizer "मुंब" matched any name containing म and ब). Devanagari names are
+also indexed with nasal clusters written as anusvara ("मुम्बई" also as "मुंबई"); the app folds
+queries the same way, so both common spellings work.
 
 ## Bundled style (`style/`)
 

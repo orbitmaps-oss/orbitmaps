@@ -25,6 +25,7 @@ Usage: python pipeline/sample_region/build_sample_search.py
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -37,7 +38,8 @@ from pathlib import Path
 from build_sample_routing import EXTRACT, SAMPLE_DIR
 from fetch_sample_region import sha256_of
 
-SCHEMA_VERSION = 1
+# 2: places.detail ("Maharashtra, India"), shared with build_world_places.py.
+SCHEMA_VERSION = 2
 INDEX = SAMPLE_DIR / "assets" / "regions" / "panaji-search.sqlite"
 WORK_DIR = SAMPLE_DIR / "search-work"
 
@@ -81,6 +83,25 @@ class Place:
     lat: float
     lon: float
     importance: int
+    # Where the place is, shown under its name ("Maharashtra, India"); None for region places.
+    detail: str | None = None
+
+
+# Devanagari: a nasal consonant + virama before another consonant (म्ब in मुम्बई) is written the same
+# as the anusvara (मुंबई); both spellings are common. Names are indexed in the anusvara form too, and
+# the app folds queries the same way (SearchText.foldSpelling), so either spelling finds the place.
+DEVANAGARI_NASAL_CLUSTER = re.compile("[\u0919\u091E\u0923\u0928\u092E]\u094D(?=[\u0915-\u0939])")
+ANUSVARA = "\u0902"
+
+
+def fold_spelling(text: str) -> str:
+    return DEVANAGARI_NASAL_CLUSTER.sub(ANUSVARA, text)
+
+
+def search_text(names: tuple[str, ...]) -> str:
+    """What goes into the FTS index: every name, plus its folded spelling when that differs."""
+    folded = [fold_spelling(n) for n in names]
+    return " ".join(list(names) + [f for f, n in zip(folded, names) if f != n])
 
 
 def names_of(tags: dict[str, str]) -> tuple[str, ...]:
@@ -228,20 +249,27 @@ def build_index(places: list[Place], dest: Path, meta: dict[str, str]) -> None:
                 category TEXT NOT NULL,
                 lat REAL NOT NULL,
                 lon REAL NOT NULL,
-                importance INTEGER NOT NULL
+                importance INTEGER NOT NULL,
+                detail TEXT
             );
+            -- categories adds marks (M*) to word characters: by default unicode61 splits Indic
+            -- words at their vowel signs, so a Devanagari prefix would match unrelated places.
             CREATE VIRTUAL TABLE places_fts USING fts5(
-                names, content='', tokenize='unicode61 remove_diacritics 2', prefix='2 3'
+                names, content='', prefix='2 3',
+                tokenize="unicode61 remove_diacritics 2 categories 'L* N* Co M*'"
             );
             """
         )
         with db:
             for rowid, place in enumerate(places, start=1):
                 db.execute(
-                    "INSERT INTO places VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (rowid, place.osm, place.name, place.name_en, place.category, place.lat, place.lon, place.importance),
+                    "INSERT INTO places VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        rowid, place.osm, place.name, place.name_en, place.category,
+                        place.lat, place.lon, place.importance, place.detail,
+                    ),
                 )
-                db.execute("INSERT INTO places_fts(rowid, names) VALUES (?, ?)", (rowid, " ".join(place.names)))
+                db.execute("INSERT INTO places_fts(rowid, names) VALUES (?, ?)", (rowid, search_text(place.names)))
             db.executemany("INSERT INTO meta VALUES (?, ?)", sorted(meta.items()))
             db.execute("INSERT INTO places_fts(places_fts) VALUES ('optimize')")
         db.execute("VACUUM")
@@ -250,10 +278,10 @@ def build_index(places: list[Place], dest: Path, meta: dict[str, str]) -> None:
     partial.replace(dest)
 
 
-def index_meta(place_count: int, source_sha256: str, built_at: datetime) -> dict[str, str]:
+def index_meta(place_count: int, source_sha256: str, built_at: datetime, region: str = "panaji") -> dict[str, str]:
     return {
         "schema_version": str(SCHEMA_VERSION),
-        "region": "panaji",
+        "region": region,
         "place_count": str(place_count),
         "built_at": built_at.astimezone(timezone.utc).isoformat(timespec="seconds"),
         "source_sha256": source_sha256,

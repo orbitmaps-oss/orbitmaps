@@ -101,8 +101,9 @@ class IndexTest(unittest.TestCase):
             bss.Place("n1", "Panaji", None, ("Panaji", "Panjim", "पणजी"), "place=city", 15.4989, 73.8278, 100),
             bss.Place("n2", "Café Bhosle", "Cafe Bhosle", ("Café Bhosle", "Cafe Bhosle"), "amenity=cafe", 15.49, 73.82, 30),
             bss.Place("w3", "Rua de Ourém", None, ("Rua de Ourém",), "highway=residential", 15.50, 73.83, 20),
+            bss.Place("n4", "Mumbai", None, ("Mumbai", "मुम्बई"), "place=city", 19.07, 72.88, 100),
         ]
-        bss.build_index(places, self.db_path, bss.index_meta(3, "a" * 64, datetime(2026, 10, 9, tzinfo=timezone.utc)))
+        bss.build_index(places, self.db_path, bss.index_meta(4, "a" * 64, datetime(2026, 10, 9, tzinfo=timezone.utc)))
         self.db = sqlite3.connect(self.db_path)
 
     def tearDown(self):
@@ -118,7 +119,7 @@ class IndexTest(unittest.TestCase):
         return [row[0] for row in rows]
 
     def test_prefix_search_works_as_the_user_types(self):
-        self.assertEqual(["n1"], self.match('"pan"*'))
+        self.assertEqual(["n1"], self.match('"pana"*'))
         self.assertEqual(["n1"], self.match('"panj"*'))
 
     def test_accents_are_ignored(self):
@@ -127,6 +128,24 @@ class IndexTest(unittest.TestCase):
 
     def test_names_in_other_scripts_are_found(self):
         self.assertEqual(["n1"], self.match('"पणजी"*'))
+
+    def test_indic_prefixes_do_not_split_at_vowel_signs(self):
+        # Regression: with the default tokenizer, "मुंब" matched any name containing म and ब.
+        self.assertEqual(["n1"], self.match('"पण"*'))
+        self.assertEqual(["n4"], self.match('"मुंब"*'))
+        self.assertEqual([], self.match('"मब"*'))
+
+    def test_both_devanagari_nasal_spellings_find_the_place(self):
+        self.assertEqual(["n4"], self.match('"मुंबई"*'))
+        self.assertEqual(["n4"], self.match('"मुम्बई"*'))
+
+    def test_folding_turns_nasal_clusters_into_anusvara_only_before_consonants(self):
+        self.assertEqual("मुंबई", bss.fold_spelling("मुम्बई"))
+        self.assertEqual("दिल्ली", bss.fold_spelling("दिल्ली"))
+        self.assertEqual("हिंदी", bss.fold_spelling("हिन्दी"))
+        self.assertEqual("Mumbai", bss.fold_spelling("Mumbai"))
+        self.assertEqual("मुम्बई मुंबई", bss.search_text(("मुम्बई",)))
+        self.assertEqual("Panaji", bss.search_text(("Panaji",)))
 
     def test_every_word_must_match(self):
         self.assertEqual(["w3"], self.match('"rua"* "our"*'))
@@ -141,7 +160,7 @@ class IndexTest(unittest.TestCase):
         self.assertEqual(str(bss.SCHEMA_VERSION), meta["schema_version"])
         self.assertEqual("ODbL-1.0", meta["licence"])
         self.assertEqual("© OpenStreetMap contributors", meta["attribution"])
-        self.assertEqual("3", meta["place_count"])
+        self.assertEqual("4", meta["place_count"])
         self.assertEqual("2026-10-09T00:00:00+00:00", meta["built_at"])
 
     def test_no_partial_file_is_left_behind(self):
