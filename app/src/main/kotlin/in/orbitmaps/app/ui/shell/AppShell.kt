@@ -38,12 +38,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.places.PlaceRepository
+import `in`.orbitmaps.app.places.SamplePlaces
 import `in`.orbitmaps.app.ui.components.MapPlaceholder
 import `in`.orbitmaps.app.ui.components.ThemePreviews
 import `in`.orbitmaps.app.ui.glance.GlanceMode
@@ -77,12 +80,14 @@ private val FabSize = 56.dp
  * single + button handles contributions, and glance mode replaces it all while navigating.
  *
  * @param map draws the map; `bottomInset` is how much of the bottom of the screen is covered.
+ * @param places searches and looks up places, on the phone.
  */
 @Composable
 fun AppShell(
     state: AppState,
     update: (AppState.() -> AppState) -> Unit,
     map: @Composable (bottomInset: Dp) -> Unit,
+    places: PlaceRepository,
     modifier: Modifier = Modifier
 ) {
     val snackbar = remember { SnackbarHostState() }
@@ -148,7 +153,7 @@ fun AppShell(
                             }
                         }
                     }
-                    SheetContent(current, state, update, notYet)
+                    SheetContent(current, state, update, places, notYet)
                 }
             }
             Destination.Driving -> {
@@ -161,7 +166,7 @@ fun AppShell(
                     )
                 }
             }
-            is Destination.Page -> PageContent(current, state, update, back, notYet)
+            is Destination.Page -> PageContent(current, state, update, places, back, notYet)
         }
 
         SnackbarHost(
@@ -176,6 +181,7 @@ private fun SheetContent(
     current: Destination.Sheet,
     state: AppState,
     update: (AppState.() -> AppState) -> Unit,
+    places: PlaceRepository,
     notYet: () -> Unit
 ) {
     when (current) {
@@ -187,11 +193,13 @@ private fun SheetContent(
         )
         is Destination.PlaceDetails -> PlaceDetailsSheet(
             placeId = current.placeId,
+            loadPlace = places::place,
             onGo = { update { open(Destination.RoutePreview(current.placeId)) } },
             onNotYet = notYet
         )
         is Destination.RoutePreview -> RoutePreviewSheet(
             placeId = current.placeId,
+            loadPlace = places::place,
             onStart = { update { startNavigation() } }
         )
         Destination.Contribute -> ContributeSheet(onAddPlace = {
@@ -211,12 +219,13 @@ private fun PageContent(
     current: Destination.Page,
     state: AppState,
     update: (AppState.() -> AppState) -> Unit,
+    places: PlaceRepository,
     back: () -> Unit,
     notYet: () -> Unit
 ) {
     val openPlace: (String) -> Unit = { id -> update { open(Destination.PlaceDetails(id)) } }
     when (current) {
-        Destination.Search -> SearchPage(onBack = back, onOpenPlace = openPlace)
+        Destination.Search -> SearchPage(onBack = back, onOpenPlace = openPlace, search = places::search)
         Destination.AddPlace -> AddPlacePage(onBack = back, onPublish = notYet)
         Destination.GroupChat -> GroupChatPage(onBack = back, onSend = notYet)
         Destination.Profile -> ProfilePage(signedIn = state.signedIn, onBack = back, onOpen = { update { open(it) } })
@@ -275,7 +284,12 @@ private fun RoundButton(onClick: () -> Unit, content: @Composable () -> Unit) {
 @Composable
 private fun AppShellHomePreview() {
     OrbitTheme {
-        AppShell(state = AppState(), update = {}, map = { MapPlaceholder() })
+        AppShell(
+            state = AppState(),
+            update = {},
+            map = { MapPlaceholder() },
+            places = SamplePlaces(LocalResources.current::getString)
+        )
     }
 }
 
@@ -283,6 +297,11 @@ private fun AppShellHomePreview() {
 @Composable
 private fun AppShellHalfPreview() {
     OrbitTheme {
-        AppShell(state = AppState(sheetAnchor = SheetAnchor.Half), update = {}, map = { MapPlaceholder() })
+        AppShell(
+            state = AppState(sheetAnchor = SheetAnchor.Half),
+            update = {},
+            map = { MapPlaceholder() },
+            places = SamplePlaces(LocalResources.current::getString)
+        )
     }
 }

@@ -45,6 +45,9 @@ object RegionInstaller {
     private val TAR_MAGIC = "ustar".toByteArray(Charsets.US_ASCII)
     private const val TAR_MAGIC_OFFSET = 257
 
+    /** Every SQLite 3 database starts with these 16 bytes. */
+    private val SQLITE_MAGIC = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
+
     /**
      * @param open opens the bundled region, or returns null if it isn't bundled.
      * @param stamp changes whenever the bundled file may have changed (the app's last update time).
@@ -105,6 +108,12 @@ object RegionInstaller {
         val read = file.inputStream().use { it.readNBytesCompat(header) }
         return read == header.size &&
             header.copyOfRange(TAR_MAGIC_OFFSET, header.size).contentEquals(TAR_MAGIC)
+    }
+
+    fun hasSqliteHeader(file: File): Boolean {
+        val header = ByteArray(SQLITE_MAGIC.size)
+        val read = file.inputStream().use { it.readNBytesCompat(header) }
+        return read == header.size && header.contentEquals(SQLITE_MAGIC)
     }
 
     private fun markerText(stamp: String, size: Long) = "$stamp\n$size\n"

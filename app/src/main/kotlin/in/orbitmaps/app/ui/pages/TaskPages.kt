@@ -31,16 +31,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.places.SamplePlaces
+import `in`.orbitmaps.app.places.SearchResults
+import `in`.orbitmaps.app.search.CategoryGroup
 import `in`.orbitmaps.app.ui.components.ChipRow
 import `in`.orbitmaps.app.ui.components.ListRow
 import `in`.orbitmaps.app.ui.components.PageScaffold
@@ -50,14 +55,31 @@ import `in`.orbitmaps.app.ui.components.ThemePreviews
 import `in`.orbitmaps.app.ui.sample.Delivery
 import `in`.orbitmaps.app.ui.sample.SampleData
 import `in`.orbitmaps.app.ui.sheets.PlaceRow
-import `in`.orbitmaps.app.ui.sheets.QuickCategories
+import `in`.orbitmaps.app.ui.sheets.QuickGroups
 import `in`.orbitmaps.app.ui.theme.OrbitTheme
+import kotlinx.coroutines.delay
 
-/** Window 4: offline search with New and Confirmed labels, filters and recent searches. */
+/** Wait this long after the last keystroke before searching. */
+private const val SEARCH_DEBOUNCE_MS = 150L
+
+/**
+ * Window 4: offline search with category filters and recent searches. [search] runs on the phone:
+ * the region's index when one is installed, otherwise the sample places. Nothing is sent anywhere.
+ */
 @Composable
-fun SearchPage(onBack: () -> Unit, onOpenPlace: (String) -> Unit, modifier: Modifier = Modifier) {
+fun SearchPage(
+    onBack: () -> Unit,
+    onOpenPlace: (String) -> Unit,
+    search: suspend (String, CategoryGroup?) -> SearchResults,
+    modifier: Modifier = Modifier
+) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableIntStateOf(-1) }
+    val group = QuickGroups.getOrNull(filter)
+    val results by produceState<SearchResults?>(null, query, group) {
+        delay(SEARCH_DEBOUNCE_MS)
+        value = search(query, group)
+    }
     PageScaffold(title = stringResource(R.string.search_title), onBack = onBack, modifier = modifier) {
         OutlinedTextField(
             value = query,
@@ -67,11 +89,11 @@ fun SearchPage(onBack: () -> Unit, onOpenPlace: (String) -> Unit, modifier: Modi
             modifier = Modifier.fillMaxWidth()
         )
         ChipRow {
-            QuickCategories.forEachIndexed { index, label ->
+            QuickGroups.forEachIndexed { index, chip ->
                 FilterChip(
                     selected = index == filter,
                     onClick = { filter = if (filter == index) -1 else index },
-                    label = { Text(stringResource(label)) }
+                    label = { Text(stringResource(chip.label)) }
                 )
             }
         }
@@ -87,18 +109,23 @@ fun SearchPage(onBack: () -> Unit, onOpenPlace: (String) -> Unit, modifier: Modi
                 ListRow(Icons.Filled.Refresh, text, onClick = { query = text })
             }
         }
-        SectionTitle(stringResource(R.string.search_results))
-        val categoryName = if (filter >= 0) stringResource(QuickCategories[filter]) else null
-        val results = SampleData.places.filter { place ->
-            val nameMatches = stringResource(place.name).contains(query.trim(), ignoreCase = true)
-            val categoryMatches = categoryName == null || stringResource(place.category) == categoryName
-            nameMatches && categoryMatches
-        }
-        if (results.isEmpty()) {
+        val current = results ?: return@PageScaffold
+        if (current.places.isEmpty() && (query.isNotBlank() || group != null)) {
+            SectionTitle(stringResource(R.string.search_results))
             Text(stringResource(R.string.search_no_results), style = MaterialTheme.typography.bodyMedium)
         }
-        results.forEach { place -> PlaceRow(place, onClick = { onOpenPlace(place.id) }) }
-        SampleDataNote(Modifier.padding(vertical = 8.dp))
+        if (current.places.isNotEmpty()) SectionTitle(stringResource(R.string.search_results))
+        current.places.forEach { place -> PlaceRow(place, onClick = { onOpenPlace(place.id) }) }
+        if (current.fromOfflineIndex) {
+            Text(
+                stringResource(R.string.osm_attribution),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else {
+            SampleDataNote(Modifier.padding(vertical = 8.dp))
+        }
     }
 }
 
@@ -240,7 +267,8 @@ fun GroupChatPage(onBack: () -> Unit, onSend: () -> Unit, modifier: Modifier = M
 @ThemePreviews
 @Composable
 private fun SearchPagePreview() {
-    OrbitTheme { SearchPage(onBack = {}, onOpenPlace = {}) }
+    val samples = SamplePlaces(LocalResources.current::getString)
+    OrbitTheme { SearchPage(onBack = {}, onOpenPlace = {}, search = samples::search) }
 }
 
 @ThemePreviews

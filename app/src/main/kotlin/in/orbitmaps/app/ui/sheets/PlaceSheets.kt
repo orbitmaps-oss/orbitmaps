@@ -32,38 +32,57 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.places.PlaceItem
+import `in`.orbitmaps.app.places.SamplePlaces
 import `in`.orbitmaps.app.ui.components.ChipRow
 import `in`.orbitmaps.app.ui.components.ListRow
 import `in`.orbitmaps.app.ui.components.SampleDataNote
 import `in`.orbitmaps.app.ui.components.StatusTag
 import `in`.orbitmaps.app.ui.components.Tag
 import `in`.orbitmaps.app.ui.components.ThemePreviews
-import `in`.orbitmaps.app.ui.sample.SampleData
 import `in`.orbitmaps.app.ui.theme.OrbitColors
 import `in`.orbitmaps.app.ui.theme.OrbitTheme
 
-/** Window 5: status, rating from visits, hours, tags, actions and the data credit. */
+/** Loads a place for a sheet; null while loading or if the place is unknown. */
 @Composable
-fun PlaceDetailsSheet(placeId: String, onGo: () -> Unit, onNotYet: () -> Unit, modifier: Modifier = Modifier) {
-    val place = SampleData.place(placeId)
+private fun rememberPlace(placeId: String, loadPlace: suspend (String) -> PlaceItem?): PlaceItem? {
+    val place by produceState<PlaceItem?>(null, placeId) { value = loadPlace(placeId) }
+    return place
+}
+
+/**
+ * Window 5: name, category and distance, actions and the data credit. Sample places also show the
+ * planned community parts (status, rating from visits, hours, phone, tags).
+ */
+@Composable
+fun PlaceDetailsSheet(
+    placeId: String,
+    loadPlace: suspend (String) -> PlaceItem?,
+    onGo: () -> Unit,
+    onNotYet: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val place = rememberPlace(placeId, loadPlace) ?: return
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                stringResource(place.name),
+                place.name,
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.weight(1f)
             )
-            StatusTag(place.status, confirmations = place.confirmations)
+            place.status?.let { StatusTag(it, confirmations = place.confirmations) }
         }
         Text(
             stringResource(R.string.place_category_distance, stringResource(place.category), place.distanceKm),
@@ -79,32 +98,7 @@ fun PlaceDetailsSheet(placeId: String, onGo: () -> Unit, onNotYet: () -> Unit, m
             OutlinedButton(onClick = onNotYet) { Text(stringResource(R.string.action_save)) }
             OutlinedButton(onClick = onNotYet) { Text(stringResource(R.string.action_confirm)) }
         }
-        val rating = place.rating
-        ListRow(
-            icon = Icons.Filled.Star,
-            title = if (rating != null) {
-                stringResource(R.string.place_rating_from_visits, rating)
-            } else {
-                stringResource(R.string.place_rating_none)
-            },
-            subtitle = stringResource(R.string.place_rating_explainer),
-            onClick = onNotYet
-        )
-        ListRow(
-            Icons.Filled.DateRange,
-            stringResource(R.string.sample_hours),
-            subtitle = stringResource(R.string.place_hours)
-        )
-        ListRow(
-            Icons.Filled.Phone,
-            stringResource(R.string.sample_phone),
-            subtitle = stringResource(R.string.place_phone)
-        )
-        ChipRow {
-            listOf(R.string.sample_tag_wifi, R.string.sample_tag_parking, R.string.sample_tag_wheelchair).forEach {
-                AssistChip(onClick = {}, label = { Text(stringResource(it)) })
-            }
-        }
+        if (place.isSample) SampleCommunityDetails(place, onNotYet)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onNotYet) {
                 Icon(Icons.Filled.Share, contentDescription = null)
@@ -122,7 +116,38 @@ fun PlaceDetailsSheet(placeId: String, onGo: () -> Unit, onNotYet: () -> Unit, m
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        SampleDataNote()
+        if (place.isSample) SampleDataNote()
+    }
+}
+
+/** The community parts of a place sheet, shown with sample data until the places API exists. */
+@Composable
+private fun SampleCommunityDetails(place: PlaceItem, onNotYet: () -> Unit) {
+    val rating = place.rating
+    ListRow(
+        icon = Icons.Filled.Star,
+        title = if (rating != null) {
+            stringResource(R.string.place_rating_from_visits, rating)
+        } else {
+            stringResource(R.string.place_rating_none)
+        },
+        subtitle = stringResource(R.string.place_rating_explainer),
+        onClick = onNotYet
+    )
+    ListRow(
+        Icons.Filled.DateRange,
+        stringResource(R.string.sample_hours),
+        subtitle = stringResource(R.string.place_hours)
+    )
+    ListRow(
+        Icons.Filled.Phone,
+        stringResource(R.string.sample_phone),
+        subtitle = stringResource(R.string.place_phone)
+    )
+    ChipRow {
+        listOf(R.string.sample_tag_wifi, R.string.sample_tag_parking, R.string.sample_tag_wheelchair).forEach {
+            AssistChip(onClick = {}, label = { Text(stringResource(it)) })
+        }
     }
 }
 
@@ -141,14 +166,19 @@ private val SampleRoutes = listOf(
 
 /** Window 6: travel mode, route options with the alerts on each, and Start. */
 @Composable
-fun RoutePreviewSheet(placeId: String, onStart: () -> Unit, modifier: Modifier = Modifier) {
-    val place = SampleData.place(placeId)
+fun RoutePreviewSheet(
+    placeId: String,
+    loadPlace: suspend (String) -> PlaceItem?,
+    onStart: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val place = rememberPlace(placeId, loadPlace) ?: return
     val modes = listOf(R.string.mode_car, R.string.mode_bike, R.string.mode_walk)
     var mode by remember { mutableIntStateOf(0) }
     var route by remember { mutableIntStateOf(0) }
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            stringResource(R.string.route_to, stringResource(place.name)),
+            stringResource(R.string.route_to, place.name),
             style = MaterialTheme.typography.titleLarge
         )
         ChipRow {
@@ -199,11 +229,19 @@ fun RoutePreviewSheet(placeId: String, onStart: () -> Unit, modifier: Modifier =
 @ThemePreviews
 @Composable
 private fun PlaceDetailsPreview() {
-    OrbitTheme { Surface { PlaceDetailsSheet("cafe", onGo = {}, onNotYet = {}, modifier = Modifier.padding(16.dp)) } }
+    val samples = SamplePlaces(LocalResources.current::getString)
+    OrbitTheme {
+        Surface {
+            PlaceDetailsSheet("cafe", samples::place, onGo = {}, onNotYet = {}, modifier = Modifier.padding(16.dp))
+        }
+    }
 }
 
 @ThemePreviews
 @Composable
 private fun RoutePreviewPreview() {
-    OrbitTheme { Surface { RoutePreviewSheet("cafe", onStart = {}, modifier = Modifier.padding(16.dp)) } }
+    val samples = SamplePlaces(LocalResources.current::getString)
+    OrbitTheme {
+        Surface { RoutePreviewSheet("cafe", samples::place, onStart = {}, modifier = Modifier.padding(16.dp)) }
+    }
 }

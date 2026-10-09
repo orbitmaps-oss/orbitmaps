@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import `in`.orbitmaps.app.map.MapScreen
+import `in`.orbitmaps.app.places.PlacesViewModel
 import `in`.orbitmaps.app.ui.shell.AppShell
 import `in`.orbitmaps.app.ui.shell.ShellViewModel
 import `in`.orbitmaps.app.ui.theme.OrbitTheme
@@ -16,6 +17,7 @@ import org.maplibre.android.log.Logger
 
 class MainActivity : ComponentActivity() {
     private val shell: ShellViewModel by viewModels()
+    private val placesModel: PlacesViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,7 +32,8 @@ class MainActivity : ComponentActivity() {
                 AppShell(
                     state = shell.state,
                     update = shell::update,
-                    map = { bottomInset -> MapScreen(bottomInset = bottomInset) }
+                    map = { bottomInset -> MapScreen(bottomInset = bottomInset) },
+                    places = placesModel.places
                 )
             }
         }

@@ -146,4 +146,15 @@ class RegionInstallerTest {
         assertEquals(InstallResult.Invalid, result)
         assertFalse(target.exists())
     }
+
+    @Test
+    fun sqliteHeaderCheckAcceptsSqlite3Only() {
+        val file = tmp.newFile("x.sqlite")
+        file.writeBytes("SQLite format 3\u0000".toByteArray() + ByteArray(100))
+        assertTrue(RegionInstaller.hasSqliteHeader(file))
+        file.writeBytes("SQLite format 2\u0000".toByteArray() + ByteArray(100))
+        assertFalse(RegionInstaller.hasSqliteHeader(file))
+        file.writeBytes(tar)
+        assertFalse(RegionInstaller.hasSqliteHeader(file))
+    }
 }

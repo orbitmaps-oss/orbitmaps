@@ -33,11 +33,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.places.PlaceItem
+import `in`.orbitmaps.app.places.SamplePlaces
+import `in`.orbitmaps.app.search.CategoryGroup
 import `in`.orbitmaps.app.ui.components.ChipRow
 import `in`.orbitmaps.app.ui.components.ListRow
 import `in`.orbitmaps.app.ui.components.MapPlaceholder
@@ -46,12 +50,10 @@ import `in`.orbitmaps.app.ui.components.SectionTitle
 import `in`.orbitmaps.app.ui.components.StatusTag
 import `in`.orbitmaps.app.ui.components.ThemePreviews
 import `in`.orbitmaps.app.ui.sample.SampleData
-import `in`.orbitmaps.app.ui.sample.SamplePlace
 import `in`.orbitmaps.app.ui.theme.OrbitTheme
 
-/** The search chips under the search bar (window 1). */
-val QuickCategories =
-    listOf(R.string.category_food, R.string.category_fuel, R.string.category_ev, R.string.category_trails)
+/** The search chips under the search bar (window 1) and on the search page (window 4). */
+val QuickGroups = listOf(CategoryGroup.Food, CategoryGroup.Fuel, CategoryGroup.Ev, CategoryGroup.Trails)
 
 /**
  * The home sheet. What the user sees depends on the sheet height: peek shows search and chips
@@ -68,8 +70,8 @@ fun HomeSheet(
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SearchBarButton(onClick = onSearch)
         ChipRow {
-            QuickCategories.forEach { label ->
-                AssistChip(onClick = onSearch, label = { Text(stringResource(label)) })
+            QuickGroups.forEach { group ->
+                AssistChip(onClick = onSearch, label = { Text(stringResource(group.label)) })
             }
         }
 
@@ -89,7 +91,12 @@ fun HomeSheet(
             }
         }
         SectionTitle(stringResource(R.string.home_near_you))
-        SampleData.places.take(3).forEach { place -> PlaceRow(place, onClick = { onOpenPlace(place.id) }) }
+        // Sample until the app knows where the user is.
+        val resources = LocalResources.current
+        val samples = remember(resources) { SamplePlaces(resources::getString) }
+        SampleData.places.take(3).forEach { place ->
+            PlaceRow(samples.item(place), onClick = { onOpenPlace(place.id) })
+        }
 
         // Window 3: full height.
         CommunityFeed(onNotYet = onNotYet)
@@ -119,7 +126,7 @@ private fun SearchBarButton(onClick: () -> Unit) {
 
 /** One place with its category, distance and status label; used on the sheet and in search results. */
 @Composable
-fun PlaceRow(place: SamplePlace, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PlaceRow(place: PlaceItem, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -129,14 +136,14 @@ fun PlaceRow(place: SamplePlace, onClick: () -> Unit, modifier: Modifier = Modif
             .padding(vertical = 8.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(stringResource(place.name), style = MaterialTheme.typography.bodyLarge)
+            Text(place.name, style = MaterialTheme.typography.bodyLarge)
             Text(
                 stringResource(R.string.place_category_distance, stringResource(place.category), place.distanceKm),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        StatusTag(place.status, confirmations = place.confirmations)
+        place.status?.let { StatusTag(it, confirmations = place.confirmations) }
     }
 }
 

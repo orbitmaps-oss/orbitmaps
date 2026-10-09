@@ -49,6 +49,11 @@
     <string name="category_trails">Trails</string>
     <string name="category_hospital">Hospital</string>
     <string name="category_shop">Shop</string>
+    <string name="category_place">Place</string>
+    <string name="category_street">Street</string>
+    <string name="category_transport">Transport</string>
+    <string name="category_nature">Nature</string>
+    <string name="category_poi">Place of interest</string>
 
     <!-- Home sheet (windows 1 to 3) -->
     <string name="search_hint">Search offline maps</string>
