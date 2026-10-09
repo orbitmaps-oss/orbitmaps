@@ -112,4 +112,38 @@ class RegionInstallerTest {
         file.writeBytes(region)
         assertTrue(RegionInstaller.hasPmTilesHeader(file))
     }
+
+    /** A minimal POSIX tar header: "ustar" at byte 257, as Valhalla's tile extracts have. */
+    private val tar = ByteArray(257) + "ustar".toByteArray() + ByteArray(250)
+
+    @Test
+    fun tarHeaderCheckAcceptsUstarAndRejectsOthers() {
+        val file = tmp.newFile("x.tar")
+        file.writeBytes(tar)
+        assertTrue(RegionInstaller.hasTarHeader(file))
+        file.writeBytes(region)
+        assertFalse(RegionInstaller.hasTarHeader(file))
+        file.writeBytes(ByteArray(10))
+        assertFalse(RegionInstaller.hasTarHeader(file))
+    }
+
+    @Test
+    fun customFormatCheckInstallsRoutingTiles() {
+        val target = File(tmp.root, "regions/panaji-routing.tar")
+        val result = RegionInstaller.install({ ByteArrayInputStream(tar) }, target, "1", RegionInstaller::hasTarHeader)
+        assertEquals(InstallResult.Installed(target, copied = true), result)
+        assertArrayEquals(tar, target.readBytes())
+        val again = RegionInstaller.install({ ByteArrayInputStream(tar) }, target, "1", RegionInstaller::hasTarHeader)
+        assertEquals(InstallResult.Installed(target, copied = false), again)
+    }
+
+    @Test
+    fun customFormatCheckRejectsTheWrongFormat() {
+        val target = File(tmp.root, "regions/panaji-routing.tar")
+        val result = RegionInstaller.install({
+            ByteArrayInputStream(region)
+        }, target, "1", RegionInstaller::hasTarHeader)
+        assertEquals(InstallResult.Invalid, result)
+        assertFalse(target.exists())
+    }
 }
