@@ -39,6 +39,21 @@ Until region-pack downloads exist, the app shows one development region:
 
 The map code lives in `app/.../map/` for now and moves to `core/map/` when a second user appears.
 
+## Online map (on-device first)
+
+When *Browse undownloaded areas* is on (default) and the phone is online, `MapScreen` switches to
+`OfflineStyle.streamingStyleJson`: the same bundled style, glyphs and sprites, with the vector
+source at `pmtiles://https://data.orbitmaps.in/v1/tiles/world.pmtiles` (`OnlineData`). MapLibre
+fetches only the byte ranges of the tiles in view and caches them. Any other remote URL in the
+style is rejected, and CI checks that app code only names hosts in `config/network-hosts.txt`.
+Offline, or with the switch off, it falls back to the installed region and its camera limits.
+`EnvironmentViewModel` combines the setting (`AppSettings`, excluded from backups) with the network
+state (`networkStatus`) into a `MapMode`, and `MapLibre.setConnected` follows it.
+
+Known gap: the bundled glyphs cover Latin, Devanagari and punctuation (`docs/GLYPHS.md`); CJK uses
+the phone's font, but labels in other scripts (Arabic, Cyrillic, Greek, Thai, …) need more glyph
+ranges before worldwide launch.
+
 ## Offline routing (prototype)
 
 1. The **Sample region data** workflow builds Valhalla tiles for the same Panaji box with

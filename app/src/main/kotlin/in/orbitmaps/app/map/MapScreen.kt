@@ -38,6 +38,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import `in`.orbitmaps.app.Attribution
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.net.MapMode
+import `in`.orbitmaps.app.net.OnlineData
 import java.io.IOException
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
@@ -58,7 +60,8 @@ internal val ATTRIBUTION_TEXT = R.string.osm_attribution
 private sealed interface MapState {
     data object Loading : MapState
 
-    data class Ready(val styleJson: String) : MapState
+    /** [limitToRegion]: keep the camera inside the installed region (offline mode). */
+    data class Ready(val styleJson: String, val limitToRegion: Boolean) : MapState
 
     data object RegionMissing : MapState
 
@@ -66,19 +69,29 @@ private sealed interface MapState {
 }
 
 /**
- * Full-screen offline map of [SampleRegion].
+ * Full-screen map: our streamed world tiles in [MapMode.Online], otherwise the installed region
+ * ([SampleRegion] for now) fully offline.
  *
  * @param bottomInset extra space below the attribution, for a bottom sheet drawn over the map.
  */
 @Composable
-fun MapScreen(modifier: Modifier = Modifier, bottomInset: Dp = 0.dp) {
+fun MapScreen(modifier: Modifier = Modifier, bottomInset: Dp = 0.dp, mode: MapMode = MapMode.Offline) {
     val context = LocalContext.current.applicationContext
     var state by remember { mutableStateOf<MapState>(MapState.Loading) }
-    LaunchedEffect(Unit) { state = loadOfflineStyle(context) }
+    LaunchedEffect(mode) {
+        state = when (mode) {
+            MapMode.Online -> loadStreamingStyle(context)
+            MapMode.Offline -> loadOfflineStyle(context)
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         when (val current = state) {
-            is MapState.Ready -> OfflineMap(current.styleJson, onLoadFailed = { state = MapState.Failed })
+            is MapState.Ready -> OfflineMap(
+                current.styleJson,
+                current.limitToRegion,
+                onLoadFailed = { state = MapState.Failed }
+            )
             MapState.RegionMissing -> CenteredMessage(R.string.map_region_missing)
             MapState.Failed -> CenteredMessage(R.string.map_load_failed)
             MapState.Loading -> Unit
@@ -96,7 +109,7 @@ private suspend fun loadOfflineStyle(context: Context): MapState = when (val ins
     is InstallResult.Installed -> withContext(Dispatchers.IO) {
         try {
             val template = context.assets.open(OfflineStyle.ASSET_PATH).bufferedReader().use { it.readText() }
-            MapState.Ready(OfflineStyle.offlineStyleJson(template, installed.file))
+            MapState.Ready(OfflineStyle.offlineStyleJson(template, installed.file), limitToRegion = true)
         } catch (e: IOException) {
             MapState.Failed
         } catch (e: IllegalArgumentException) {
@@ -107,10 +120,22 @@ private suspend fun loadOfflineStyle(context: Context): MapState = when (val ins
     InstallResult.Invalid, InstallResult.Failed -> MapState.Failed
 }
 
+private suspend fun loadStreamingStyle(context: Context): MapState = withContext(Dispatchers.IO) {
+    try {
+        val template = context.assets.open(OfflineStyle.ASSET_PATH).bufferedReader().use { it.readText() }
+        MapState.Ready(OfflineStyle.streamingStyleJson(template, OnlineData.WORLD_TILES_URL), limitToRegion = false)
+    } catch (e: IOException) {
+        MapState.Failed
+    } catch (e: IllegalArgumentException) {
+        MapState.Failed
+    }
+}
+
 @Composable
-private fun OfflineMap(styleJson: String, onLoadFailed: () -> Unit) {
+private fun OfflineMap(styleJson: String, limitToRegion: Boolean, onLoadFailed: () -> Unit) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val limiter = remember { RegionCameraLimiter() }
     val mapView = remember {
         val camera = CameraPosition.Builder()
             .target(SampleRegion.center.toLatLng())
@@ -128,12 +153,19 @@ private fun OfflineMap(styleJson: String, onLoadFailed: () -> Unit) {
                 // The limits assume a north-up, flat map; rotating or tilting would show past the region.
                 map.uiSettings.isRotateGesturesEnabled = false
                 map.uiSettings.isTiltGesturesEnabled = false
-                val limiter = RegionCameraLimiter(this, map)
+                limiter.attach(this, map)
                 addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> limiter.onViewportChanged() }
                 map.addOnCameraMoveListener(limiter::onCameraMoved)
-                limiter.onViewportChanged()
-                map.setStyle(Style.Builder().fromJson(styleJson))
             }
+        }
+    }
+
+    // Switching between online and offline keeps the same MapView and camera; only the style and
+    // the region limits change.
+    LaunchedEffect(mapView, styleJson, limitToRegion) {
+        mapView.getMapAsync { map ->
+            limiter.enabled = limitToRegion
+            map.setStyle(Style.Builder().fromJson(styleJson))
         }
     }
 
@@ -162,13 +194,40 @@ private fun OfflineMap(styleJson: String, onLoadFailed: () -> Unit) {
 /**
  * Applies [CameraLimits] to a map showing [SampleRegion]: a minimum zoom at which the region fills the
  * view, and a camera-target area that keeps every edge of the view inside the region at the current zoom.
+ * While [enabled] is false (the streamed world map) the camera can go anywhere.
  */
-private class RegionCameraLimiter(private val view: MapView, private val map: MapLibreMap) {
+private class RegionCameraLimiter {
+    private var view: MapView? = null
+    private var map: MapLibreMap? = null
     private var widthDp = 0.0
     private var heightDp = 0.0
     private var limitedForZoom = Double.NaN
 
+    var enabled = false
+        set(value) {
+            if (field == value) return
+            field = value
+            val map = map ?: return
+            if (value) {
+                widthDp = 0.0
+                heightDp = 0.0
+                onViewportChanged()
+            } else {
+                map.setMinZoomPreference(0.0)
+                map.setLatLngBoundsForCameraTarget(null)
+            }
+        }
+
+    fun attach(view: MapView, map: MapLibreMap) {
+        this.view = view
+        this.map = map
+        onViewportChanged()
+    }
+
     fun onViewportChanged() {
+        val view = view ?: return
+        val map = map ?: return
+        if (!enabled) return
         val density = view.resources.displayMetrics.density
         val width = view.width / density.toDouble()
         val height = view.height / density.toDouble()
@@ -183,7 +242,8 @@ private class RegionCameraLimiter(private val view: MapView, private val map: Ma
     }
 
     fun onCameraMoved() {
-        if (widthDp <= 0) return
+        val map = map ?: return
+        if (!enabled || widthDp <= 0) return
         val zoom = map.cameraPosition.zoom
         if (abs(zoom - limitedForZoom) < ZOOM_EPSILON) return
         limitedForZoom = zoom

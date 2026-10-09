@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.places.PlaceRepository
 import `in`.orbitmaps.app.places.SamplePlaces
+import `in`.orbitmaps.app.settings.DataSettings
 import `in`.orbitmaps.app.ui.components.MapPlaceholder
 import `in`.orbitmaps.app.ui.components.ThemePreviews
 import `in`.orbitmaps.app.ui.glance.GlanceMode
@@ -81,6 +82,8 @@ private val FabSize = 56.dp
  *
  * @param map draws the map; `bottomInset` is how much of the bottom of the screen is covered.
  * @param places searches and looks up places, on the phone.
+ * @param online whether the map streams our world tiles (false: downloaded data only).
+ * @param data the user's data switches; [onDataChange] saves a change.
  */
 @Composable
 fun AppShell(
@@ -88,7 +91,10 @@ fun AppShell(
     update: (AppState.() -> AppState) -> Unit,
     map: @Composable (bottomInset: Dp) -> Unit,
     places: PlaceRepository,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    online: Boolean = false,
+    data: DataSettings = DataSettings(),
+    onDataChange: (DataSettings.() -> DataSettings) -> Unit = {}
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -121,6 +127,7 @@ fun AppShell(
         when (current) {
             is Destination.Sheet -> {
                 MapControls(
+                    online = online,
                     onProfile = { update { open(Destination.Profile) } },
                     onLayers = { update { open(Destination.Layers) } }
                 )
@@ -166,7 +173,7 @@ fun AppShell(
                     )
                 }
             }
-            is Destination.Page -> PageContent(current, state, update, places, back, notYet)
+            is Destination.Page -> PageContent(current, state, update, places, data, onDataChange, back, notYet)
         }
 
         SnackbarHost(
@@ -220,6 +227,8 @@ private fun PageContent(
     state: AppState,
     update: (AppState.() -> AppState) -> Unit,
     places: PlaceRepository,
+    data: DataSettings,
+    onDataChange: (DataSettings.() -> DataSettings) -> Unit,
     back: () -> Unit,
     notYet: () -> Unit
 ) {
@@ -230,8 +239,18 @@ private fun PageContent(
         Destination.GroupChat -> GroupChatPage(onBack = back, onSend = notYet)
         Destination.Profile -> ProfilePage(signedIn = state.signedIn, onBack = back, onOpen = { update { open(it) } })
         Destination.Saved -> SavedPage(signedIn = state.signedIn, onBack = back, onOpenPlace = openPlace)
-        Destination.OfflineRegions -> OfflineRegionsPage(onBack = back, onDownload = notYet)
-        Destination.PrivacySettings -> PrivacySettingsPage(onBack = back, onClearHistory = notYet)
+        Destination.OfflineRegions -> OfflineRegionsPage(
+            wifiOnly = data.wifiOnlyDownloads,
+            onWifiOnlyChange = { value -> onDataChange { copy(wifiOnlyDownloads = value) } },
+            onBack = back,
+            onDownload = notYet
+        )
+        Destination.PrivacySettings -> PrivacySettingsPage(
+            streamMap = data.streamMap,
+            onStreamMapChange = { value -> onDataChange { copy(streamMap = value) } },
+            onBack = back,
+            onClearHistory = notYet
+        )
         Destination.About -> AboutPage(onBack = back, onSupport = notYet)
         Destination.SignIn -> SignInPage(
             onBack = back,
@@ -249,19 +268,21 @@ private fun PageContent(
     }
 }
 
-/** The round profile and layers buttons at the top right, and the offline pill at the top left. */
+/** The round profile and layers buttons at the top right, and the offline pill at the top left when offline. */
 @Composable
-private fun MapControls(onProfile: () -> Unit, onLayers: () -> Unit) {
+private fun MapControls(online: Boolean, onProfile: () -> Unit, onLayers: () -> Unit) {
     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(12.dp)) {
-        Text(
-            text = stringResource(R.string.offline_pill, stringResource(R.string.sample_region_panaji)),
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .background(OrbitColors.DarkGreen, RoundedCornerShape(50))
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+        if (!online) {
+            Text(
+                text = stringResource(R.string.offline_pill, stringResource(R.string.sample_region_panaji)),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .background(OrbitColors.DarkGreen, RoundedCornerShape(50))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
         Column(modifier = Modifier.align(Alignment.TopEnd), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             RoundButton(onClick = onProfile) {
                 Icon(Icons.Filled.Person, contentDescription = stringResource(R.string.action_profile))

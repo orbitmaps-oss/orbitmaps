@@ -129,14 +129,19 @@ fun SavedPage(signedIn: Boolean, onBack: () -> Unit, onOpenPlace: (String) -> Un
 
 /** Window 17: region sizes, ready or download, and Wi-Fi-only updates. */
 @Composable
-fun OfflineRegionsPage(onBack: () -> Unit, onDownload: () -> Unit, modifier: Modifier = Modifier) {
-    var wifiOnly by rememberSaveable { mutableStateOf(true) }
+fun OfflineRegionsPage(
+    wifiOnly: Boolean,
+    onWifiOnlyChange: (Boolean) -> Unit,
+    onBack: () -> Unit,
+    onDownload: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     PageScaffold(title = stringResource(R.string.regions_title), onBack = onBack, modifier = modifier) {
         ToggleRow(
             title = stringResource(R.string.regions_wifi_only),
             subtitle = stringResource(R.string.regions_wifi_only_hint),
             checked = wifiOnly,
-            onCheckedChange = { wifiOnly = it }
+            onCheckedChange = onWifiOnlyChange
         )
         Divider()
         SampleData.regions.forEach { region ->
@@ -157,20 +162,35 @@ fun OfflineRegionsPage(onBack: () -> Unit, onDownload: () -> Unit, modifier: Mod
     }
 }
 
-private val PrivacySwitches = listOf(
+/** Switches that are placeholders until their features exist. */
+private val PlannedPrivacySwitches = listOf(
     R.string.privacy_search_history to R.string.privacy_search_history_hint,
     R.string.privacy_share_hazards to R.string.privacy_share_hazards_hint,
-    R.string.privacy_stream_tiles to R.string.privacy_stream_tiles_hint,
     R.string.privacy_crash_reports to R.string.privacy_crash_reports_hint
 )
 
-/** Window 18: every data switch, all off except history on the phone. */
+/**
+ * Window 18: every data switch. "Browse undownloaded areas" is real ([streamMap]); the others are
+ * placeholders until their features exist.
+ */
 @Composable
-fun PrivacySettingsPage(onBack: () -> Unit, onClearHistory: () -> Unit, modifier: Modifier = Modifier) {
+fun PrivacySettingsPage(
+    streamMap: Boolean,
+    onStreamMapChange: (Boolean) -> Unit,
+    onBack: () -> Unit,
+    onClearHistory: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val enabled = remember { mutableStateMapOf(R.string.privacy_search_history to true) }
     PageScaffold(title = stringResource(R.string.privacy_title), onBack = onBack, modifier = modifier) {
         Text(stringResource(R.string.privacy_summary), style = MaterialTheme.typography.bodyMedium)
-        PrivacySwitches.forEach { (title, hint) ->
+        ToggleRow(
+            title = stringResource(R.string.privacy_stream_tiles),
+            subtitle = stringResource(R.string.privacy_stream_tiles_hint),
+            checked = streamMap,
+            onCheckedChange = onStreamMapChange
+        )
+        PlannedPrivacySwitches.forEach { (title, hint) ->
             ToggleRow(
                 title = stringResource(title),
                 subtitle = stringResource(hint),
@@ -361,13 +381,13 @@ private fun SavedPagePreview() {
 @ThemePreviews
 @Composable
 private fun OfflineRegionsPagePreview() {
-    OrbitTheme { OfflineRegionsPage(onBack = {}, onDownload = {}) }
+    OrbitTheme { OfflineRegionsPage(wifiOnly = true, onWifiOnlyChange = {}, onBack = {}, onDownload = {}) }
 }
 
 @ThemePreviews
 @Composable
 private fun PrivacySettingsPagePreview() {
-    OrbitTheme { PrivacySettingsPage(onBack = {}, onClearHistory = {}) }
+    OrbitTheme { PrivacySettingsPage(streamMap = true, onStreamMapChange = {}, onBack = {}, onClearHistory = {}) }
 }
 
 @ThemePreviews

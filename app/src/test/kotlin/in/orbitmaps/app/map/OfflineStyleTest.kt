@@ -88,6 +88,41 @@ class OfflineStyleTest {
         assertThrows(IllegalArgumentException::class.java) { styled(bad) }
     }
 
+    private val worldTiles = "https://data.orbitmaps.in/v1/tiles/world.pmtiles"
+
+    @Test
+    fun streamingStylePointsAtOurWorldTilesAndKeepsAssetsBundled() {
+        val style = Json.parseToJsonElement(OfflineStyle.streamingStyleJson(template, worldTiles)).jsonObject
+        val source = style.getValue("sources").jsonObject.getValue(OfflineStyle.SOURCE_ID).jsonObject
+        assertEquals("pmtiles://$worldTiles", source.getValue("url").jsonPrimitive.content)
+        assertEquals("asset://map/glyphs/{fontstack}/{range}.pbf", style.getValue("glyphs").jsonPrimitive.content)
+        assertEquals("asset://map/sprites/light", style.getValue("sprite").jsonPrimitive.content)
+    }
+
+    @Test
+    fun streamingStyleHasNoOtherRemoteUrl() {
+        val output = OfflineStyle.streamingStyleJson(template, worldTiles)
+        assertEquals(1, Regex("https?://", RegexOption.IGNORE_CASE).findAll(output).count())
+    }
+
+    @Test
+    fun streamingFromAnotherHostOrOverHttpIsRejected() {
+        listOf(
+            "https://tile.openstreetmap.org/world.pmtiles",
+            "http://data.orbitmaps.in/v1/tiles/world.pmtiles",
+            "https://data.orbitmaps.in.evil.example/v1/tiles/world.pmtiles",
+            "https://data.orbitmaps.in/v1/tiles/world.mbtiles"
+        ).forEach { url ->
+            assertThrows(url, IllegalArgumentException::class.java) { OfflineStyle.streamingStyleJson(template, url) }
+        }
+    }
+
+    @Test
+    fun streamingStyleStillRejectsOtherRemoteUrls() {
+        val bad = template.replace("asset://map/sprites/light", "https://example.org/sprites/light")
+        assertThrows(IllegalArgumentException::class.java) { OfflineStyle.streamingStyleJson(bad, worldTiles) }
+    }
+
     @Test
     fun relativeRegionPathIsRejected() {
         assertThrows(IllegalArgumentException::class.java) {
