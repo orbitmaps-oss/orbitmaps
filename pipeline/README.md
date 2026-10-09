@@ -87,6 +87,13 @@ folded ("ourem" finds "Ourém"), and combining marks stay inside words, which In
 also indexed with nasal clusters written as anusvara ("मुम्बई" also as "मुंबई"); the app folds
 queries the same way, so both common spellings work.
 
+### Area search shards
+
+`sample_region/build_search_shards.py INPUT.osm.pbf [OUT]` splits any extract (up to the planet)
+into one search index per 0.25° cell on Valhalla's level-2 grid, for search anywhere. Building and
+uploading the world data (map, routing tiles, shards) is described in
+[docs/HOSTING.md](../docs/HOSTING.md).
+
 ## Bundled style (`style/`)
 
 Generates `styles/bundled/map/style-light.json` from the pinned `@protomaps/basemaps` package
