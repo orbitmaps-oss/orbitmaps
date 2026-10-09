@@ -44,8 +44,9 @@ needs Linux, so it runs in GitHub Actions rather than on developer machines:
 
 1. On GitHub: **Actions → Sample routing tiles → Run workflow**.
 2. Download the `panaji-routing` artifact from the run and unzip it into
-   `pipeline/out/sample-region/`. That gives `assets/regions/panaji-routing.tar` (bundled in debug
-   builds) and `routing-manifest.json`.
+   `pipeline/out/sample-region/`. That gives `assets/regions/panaji-routing.tar` and
+   `assets/regions/panaji-routing.json` (the Valhalla config; both bundled in debug builds) and
+   `routing-manifest.json`.
 
 `sample_region/build_sample_routing.py` downloads the dated extract
 `western-zone-260101.osm.pbf` from Geofabrik and checks Geofabrik's MD5, cuts the box with

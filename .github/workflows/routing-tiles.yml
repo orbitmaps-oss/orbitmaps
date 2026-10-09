@@ -52,6 +52,7 @@ jobs:
           # Paths in the artifact are relative to pipeline/out/sample-region/: unzip it there.
           path: |
             pipeline/out/sample-region/assets/regions/panaji-routing.tar
+            pipeline/out/sample-region/assets/regions/panaji-routing.json
             pipeline/out/sample-region/routing-manifest.json
           retention-days: 30
           if-no-files-found: error

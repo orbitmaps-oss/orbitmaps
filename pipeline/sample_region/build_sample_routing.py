@@ -11,10 +11,13 @@ Steps:
   2. Cut it to the same box as the map sample (fetch_sample_region.BBOX) with osmium.
   3. Build tiles and pack them into one tar with the pinned Valhalla image. The version must match
      the Valhalla inside valhalla-mobile (VALHALLA_VERSION), or the app can't read the tiles.
-  4. Write routing-manifest.json with versions, sizes, checksums and the licence.
+  4. Keep the generated valhalla.json: the app fills in its on-device paths and passes it to the
+     engine, so the config always matches the Valhalla version that built the tiles.
+  5. Write routing-manifest.json with versions, sizes, checksums and the licence.
 
 Outputs (gitignored):
-  pipeline/out/sample-region/assets/regions/panaji-routing.tar  (bundled in debug builds)
+  pipeline/out/sample-region/assets/regions/panaji-routing.tar   (bundled in debug builds)
+  pipeline/out/sample-region/assets/regions/panaji-routing.json  (bundled in debug builds)
   pipeline/out/sample-region/routing-manifest.json
 
 Usage: python pipeline/sample_region/build_sample_routing.py
@@ -51,6 +54,7 @@ VALHALLA_IMAGE = (
 SAMPLE_DIR = OUT_DIR / "sample-region"
 WORK_DIR = SAMPLE_DIR / "routing-work"
 TILES_TAR = SAMPLE_DIR / "assets" / "regions" / "panaji-routing.tar"
+CONFIG = SAMPLE_DIR / "assets" / "regions" / "panaji-routing.json"
 MANIFEST = SAMPLE_DIR / "routing-manifest.json"
 
 LICENCE = "ODbL-1.0"
@@ -175,11 +179,13 @@ def main() -> int:
         raise SystemExit("Valhalla produced no tile extract")
     TILES_TAR.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(built, TILES_TAR)
+    shutil.copyfile(WORK_DIR / "valhalla.json", CONFIG)
 
     data = manifest(source_sha256, modified, TILES_TAR, datetime.now(timezone.utc))
     MANIFEST.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     shutil.rmtree(WORK_DIR)
     print(f"Wrote {TILES_TAR} ({data['tiles']['size']} bytes, SHA-256 {data['tiles']['sha256']})")
+    print(f"Wrote {CONFIG}")
     print(f"Wrote {MANIFEST}")
     return 0
 
