@@ -51,6 +51,29 @@ class LatLonTest {
     }
 
     @Test
+    fun distanceToItselfIsZero() {
+        val panaji = LatLon(15.4989, 73.8278)
+        assertEquals(0.0, panaji.distanceKmTo(panaji), 0.0)
+    }
+
+    @Test
+    fun distanceMatchesKnownValues() {
+        // One degree of latitude is about 111.2 km everywhere.
+        assertEquals(111.2, LatLon(0.0, 0.0).distanceKmTo(LatLon(1.0, 0.0)), 0.1)
+        // Paris to London is about 344 km.
+        assertEquals(344.0, LatLon(48.8566, 2.3522).distanceKmTo(LatLon(51.5074, -0.1278)), 2.0)
+        // Antipodes: half the Earth's circumference.
+        assertEquals(Math.PI * LatLon.EARTH_RADIUS_KM, LatLon(0.0, 0.0).distanceKmTo(LatLon(0.0, 180.0)), 0.001)
+    }
+
+    @Test
+    fun distanceIsSymmetric() {
+        val a = LatLon(15.4989, 73.8278)
+        val b = LatLon(15.5395, 73.8135)
+        assertEquals(a.distanceKmTo(b), b.distanceKmTo(a), 1e-12)
+    }
+
+    @Test
     fun toStringDoesNotRevealCoordinates() {
         val text = LatLon(48.8584, 2.2945).toString()
         assertFalse(text.contains("48.8584"))
