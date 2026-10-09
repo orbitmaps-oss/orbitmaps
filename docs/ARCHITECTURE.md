@@ -40,6 +40,21 @@ Until region-pack downloads exist, the app shows one development region:
 
 The map code lives in `app/.../map/` for now and moves to `core/map/` when a second user appears.
 
+## Offline routing (prototype)
+
+1. The **Sample routing tiles** workflow builds Valhalla tiles for the same Panaji box with
+   Valhalla 3.6.3, the version inside valhalla-mobile 0.6.3 (see `pipeline/README.md`). Debug builds
+   bundle `regions/panaji-routing.tar` and the generated `regions/panaji-routing.json` config.
+2. `setUpSampleRouting` installs both with `RegionInstaller` (tar header check), then
+   `ValhallaJson.deviceConfig` points `mjolnir.tile_extract` at the installed tar and moves every
+   other build path under app storage.
+3. `OfflineRouter` wraps one valhalla-mobile engine (it memory-maps the tar; reuse it, close it) and
+   sends raw JSON requests, parsed by `ValhallaJson`. No network, no logging of points.
+4. Debug builds add an **Orbit routing test** launcher entry (`app/src/debug/`) that measures engine
+   start, route time and memory on the phone, for the month-1 gate.
+
+The code lives in `app/.../routing/` and moves to `core/routing/` with Ferrostar navigation.
+
 ## Modules
 
 ```

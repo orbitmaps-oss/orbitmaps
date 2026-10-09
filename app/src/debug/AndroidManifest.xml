@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Debug builds only: the on-device routing benchmark (plan step 10.3, month-1 gate). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity
+            android:name=".routing.RoutingDebugActivity"
+            android:exported="true"
+            android:label="@string/routing_debug_label"
+            android:taskAffinity="in.orbitmaps.app.routingdebug">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

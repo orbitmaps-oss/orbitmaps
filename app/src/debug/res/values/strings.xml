@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Debug-only developer screen; not translated. -->
+<resources>
+    <string name="routing_debug_label" translatable="false">Orbit routing test</string>
+    <string name="routing_debug_title" translatable="false">On-device routing test</string>
+    <string name="routing_debug_intro" translatable="false">Builds the Valhalla engine from the bundled Panaji tiles and routes between fixed sample points, fully offline. Nothing is logged or sent.</string>
+    <string name="routing_debug_run" translatable="false">Run test</string>
+    <string name="routing_debug_running" translatable="false">Running…</string>
+    <string name="routing_debug_not_bundled" translatable="false">No routing tiles in this build. Download the panaji-routing artifact from the Sample routing tiles workflow, unzip it into pipeline/out/sample-region/ and rebuild.</string>
+    <string name="routing_debug_failed" translatable="false">Setup failed: %1$s</string>
+    <string name="routing_debug_setup" translatable="false">Install and config: %1$d ms</string>
+    <string name="routing_debug_engine" translatable="false">Engine start: %1$d ms</string>
+    <string name="routing_debug_memory" translatable="false">Memory (PSS): %1$d MB before, %2$d MB after · native heap +%3$d MB</string>
+    <string name="routing_debug_tiles" translatable="false">Routing tiles: %1$.1f MB</string>
+    <!-- %1$s route name, %2$.1f km, %3$.0f min, %4$d maneuvers, %5$d ms median, %6$d ms first -->
+    <string name="routing_debug_route" translatable="false">%1$s: %2$.1f km, %3$.0f min, turns: %4$d · median %5$d ms, first %6$d ms</string>
+    <string name="routing_debug_route_error" translatable="false">%1$s: %2$s</string>
+    <string name="routing_debug_route_city" translatable="false">Panaji centre to Miramar</string>
+    <string name="routing_debug_route_bridge" translatable="false">Panaji to Porvorim (bridge)</string>
+    <string name="routing_debug_route_across" translatable="false">Dona Paula to Ribandar</string>
+    <string name="routing_debug_route_long" translatable="false">Miramar to Old Goa</string>
+</resources>
