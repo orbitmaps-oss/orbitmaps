@@ -69,7 +69,7 @@ class BuildSampleRoutingTest(unittest.TestCase):
         self.assertEqual(f"{bsr.CONTAINER_DATA}/panaji.osm.pbf", steps[1][-1])
 
     def test_outputs_are_gitignored_and_the_tar_is_bundled_with_debug_assets(self):
-        for path in (bsr.TILES_TAR, bsr.CONFIG, bsr.MANIFEST, bsr.WORK_DIR):
+        for path in (bsr.TILES_TAR, bsr.CONFIG, bsr.MANIFEST, bsr.WORK_DIR, bsr.EXTRACT):
             self.assertEqual("out", path.relative_to(fsr.REPO_ROOT / "pipeline").parts[0])
         self.assertEqual(fsr.REGION_FILE.parent, bsr.TILES_TAR.parent)
         self.assertEqual(fsr.REGION_FILE.parent, bsr.CONFIG.parent)

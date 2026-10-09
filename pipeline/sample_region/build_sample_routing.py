@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Builds Valhalla routing tiles for the Panaji (Goa) sample region.
 
-Runs in the "Sample routing tiles" GitHub Actions workflow (.github/workflows/routing-tiles.yml), on
+Runs in the "Sample region data" GitHub Actions workflow (.github/workflows/sample-region-data.yml), on
 Linux with Docker and osmium-tool installed. It can also run on any Linux or WSL machine with both.
 
 Steps:
@@ -56,6 +56,7 @@ WORK_DIR = SAMPLE_DIR / "routing-work"
 TILES_TAR = SAMPLE_DIR / "assets" / "regions" / "panaji-routing.tar"
 CONFIG = SAMPLE_DIR / "assets" / "regions" / "panaji-routing.json"
 MANIFEST = SAMPLE_DIR / "routing-manifest.json"
+EXTRACT = SAMPLE_DIR / "panaji.osm.pbf"
 
 LICENCE = "ODbL-1.0"
 ATTRIBUTION = "© OpenStreetMap contributors"
@@ -180,6 +181,7 @@ def main() -> int:
     TILES_TAR.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(built, TILES_TAR)
     shutil.copyfile(WORK_DIR / "valhalla.json", CONFIG)
+    shutil.copyfile(extract, EXTRACT)
 
     data = manifest(source_sha256, modified, TILES_TAR, datetime.now(timezone.utc))
     MANIFEST.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

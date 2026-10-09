@@ -7,7 +7,7 @@
     <string name="routing_debug_intro" translatable="false">Builds the Valhalla engine from the bundled Panaji tiles and routes between fixed sample points, fully offline. Nothing is logged or sent.</string>
     <string name="routing_debug_run" translatable="false">Run test</string>
     <string name="routing_debug_running" translatable="false">Running…</string>
-    <string name="routing_debug_not_bundled" translatable="false">No routing tiles in this build. Download the panaji-routing artifact from the Sample routing tiles workflow, unzip it into pipeline/out/sample-region/ and rebuild.</string>
+    <string name="routing_debug_not_bundled" translatable="false">No routing tiles in this build. Download the panaji-region-data artifact from the Sample region data workflow, unzip it into pipeline/out/sample-region/ and rebuild.</string>
     <string name="routing_debug_failed" translatable="false">Setup failed: %1$s</string>
     <string name="routing_debug_setup" translatable="false">Install and config: %1$d ms</string>
     <string name="routing_debug_engine" translatable="false">Engine start: %1$d ms</string>

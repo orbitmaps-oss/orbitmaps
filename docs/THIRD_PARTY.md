@@ -146,8 +146,8 @@ was committed. Total size: **1,335,997 bytes** (glyphs 1,011,353; sprites and th
 |---|---|---|---|---|---|
 | go-pmtiles (pmtiles CLI) | `protomaps/go-pmtiles` | 1.31.2 | BSD-3-Clause | https://github.com/protomaps/go-pmtiles | Extracts the sample region from a Protomaps build (`pipeline/sample_region/`). Each release archive's SHA-256 is pinned in the script |
 | Protomaps basemaps style | `@protomaps/basemaps` | 5.7.2 | BSD-3-Clause | https://github.com/protomaps/basemaps | Generates the bundled map style (`pipeline/style/`); version and integrity are pinned in `package-lock.json` |
-| Valhalla (Docker image) | `valhalla/valhalla` | 3.6.3 | MIT | https://github.com/valhalla/valhalla | Builds routing tiles for the sample region (`pipeline/sample_region/build_sample_routing.py`) in the manual `routing-tiles.yml` workflow. Image `ghcr.io/valhalla/valhalla:3.6.3-amd64`, pinned by digest in the script; the version must match the Valhalla inside valhalla-mobile. The image bundles other open-source tools (e.g. GEOS, SpatiaLite) that are used only while building and never shipped |
-| osmium-tool | `osmcode/osmium-tool` | Ubuntu 24.04 package | GPL-3.0-only | https://github.com/osmcode/osmium-tool | Cuts the sample box out of the OSM extract in the same workflow. Run as a tool, never linked or shipped |
+| Valhalla (Docker image) | `valhalla/valhalla` | 3.6.3 | MIT | https://github.com/valhalla/valhalla | Builds routing tiles for the sample region (`pipeline/sample_region/build_sample_routing.py`) in the `sample-region-data.yml` workflow. Image `ghcr.io/valhalla/valhalla:3.6.3-amd64`, pinned by digest in the script; the version must match the Valhalla inside valhalla-mobile. The image bundles other open-source tools (e.g. GEOS, SpatiaLite) that are used only while building and never shipped |
+| osmium-tool | `osmcode/osmium-tool` | Ubuntu 24.04 package | GPL-3.0-only | https://github.com/osmcode/osmium-tool | Cuts the sample box out of the OSM extract, keeps named objects and exports them for the search index, in the same workflow. Run as a tool, never linked or shipped |
 
 ## Planned (not yet added)
 

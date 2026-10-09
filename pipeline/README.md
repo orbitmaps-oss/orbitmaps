@@ -37,16 +37,16 @@ python -I pipeline/sample_region/fetch_sample_region.py
   the new hash.
 - Tests: `python -m unittest discover -s pipeline/sample_region -p "test_*.py"`.
 
-### Sample routing tiles
+### Sample routing tiles and search index
 
-Valhalla routing tiles for the same box, for the on-device routing prototype. The tile builder
-needs Linux, so it runs in GitHub Actions rather than on developer machines:
+Valhalla routing tiles and an SQLite FTS5 search index for the same box. The tile builder needs
+Linux, so both run in GitHub Actions rather than on developer machines:
 
-1. On GitHub: **Actions → Sample routing tiles → Run workflow**.
-2. Download the `panaji-routing` artifact from the run and unzip it into
+1. On GitHub: **Actions → Sample region data → Run workflow**.
+2. Download the `panaji-region-data` artifact from the run and unzip it into
    `pipeline/out/sample-region/`. That gives `assets/regions/panaji-routing.tar` and
-   `assets/regions/panaji-routing.json` (the Valhalla config; both bundled in debug builds) and
-   `routing-manifest.json`.
+   `assets/regions/panaji-routing.json` (the Valhalla config), `assets/regions/panaji-search.sqlite`
+   (the search index; all three bundled in debug builds) and `routing-manifest.json`.
 
 `sample_region/build_sample_routing.py` downloads the dated extract
 `western-zone-260101.osm.pbf` from Geofabrik and checks Geofabrik's MD5, cuts the box with
@@ -55,6 +55,11 @@ digest, run with no network). That must be the same Valhalla version as the one 
 valhalla-mobile, or the app can't read the tiles. The manifest records the versions, the source
 and tile SHA-256 and the ODbL licence. It also runs on Linux or WSL with Docker and
 `osmium-tool` installed.
+
+`sample_region/build_sample_search.py` then keeps every named object in the same extract, gives
+each one all its OSM names (every language, alternative and old names), a category, a point and an
+importance rank, merges street segments per name and area, and writes `places` plus a contentless
+FTS5 table (`unicode61`, accents removed, prefix indexes) with licence and attribution in `meta`.
 
 ## Bundled style (`style/`)
 

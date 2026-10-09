@@ -42,7 +42,7 @@ The map code lives in `app/.../map/` for now and moves to `core/map/` when a sec
 
 ## Offline routing (prototype)
 
-1. The **Sample routing tiles** workflow builds Valhalla tiles for the same Panaji box with
+1. The **Sample region data** workflow builds Valhalla tiles for the same Panaji box with
    Valhalla 3.6.3, the version inside valhalla-mobile 0.6.3 (see `pipeline/README.md`). Debug builds
    bundle `regions/panaji-routing.tar` and the generated `regions/panaji-routing.json` config.
 2. `setUpSampleRouting` installs both with `RegionInstaller` (tar header check), then
