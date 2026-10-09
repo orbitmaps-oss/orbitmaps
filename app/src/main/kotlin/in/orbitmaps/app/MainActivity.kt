@@ -6,13 +6,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.lightColorScheme
+import androidx.activity.viewModels
 import `in`.orbitmaps.app.map.MapScreen
+import `in`.orbitmaps.app.ui.shell.AppShell
+import `in`.orbitmaps.app.ui.shell.ShellViewModel
+import `in`.orbitmaps.app.ui.theme.OrbitTheme
 import org.maplibre.android.MapLibre
 import org.maplibre.android.log.Logger
 
 class MainActivity : ComponentActivity() {
+    private val shell: ShellViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // MapLibre's log lines can contain tile coordinates, which reveal where the user is looking.
@@ -22,8 +26,12 @@ class MainActivity : ComponentActivity() {
         MapLibre.setConnected(false)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme(colorScheme = lightColorScheme()) {
-                MapScreen()
+            OrbitTheme {
+                AppShell(
+                    state = shell.state,
+                    update = shell::update,
+                    map = { bottomInset -> MapScreen(bottomInset = bottomInset) }
+                )
             }
         }
     }

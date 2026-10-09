@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Placeholder content for the preview UI (ui/sample/SampleData.kt). Not real places or people, and
+     not translated. Delete each entry when the feature that shows it gets real data. -->
+<resources>
+    <string name="sample_place_cafe" translatable="false">Riverside Café</string>
+    <string name="sample_place_fuel" translatable="false">Town Fuel Station</string>
+    <string name="sample_place_ev" translatable="false">Market EV Charger</string>
+    <string name="sample_place_trail" translatable="false">Hilltop Trail</string>
+    <string name="sample_place_clinic" translatable="false">Community Clinic</string>
+    <string name="sample_where_bridge" translatable="false">Near the bridge</string>
+    <string name="sample_where_market" translatable="false">Market road</string>
+    <string name="sample_where_riverside" translatable="false">Riverside road</string>
+    <string name="sample_weekend_body" translatable="false">Night market on Saturday; the coast road is busy on Sunday morning.</string>
+    <string name="sample_member_asha" translatable="false">Asha K</string>
+    <string name="sample_member_ravi" translatable="false">Ravi V</string>
+    <string name="sample_member_meena" translatable="false">Meena N</string>
+    <string name="sample_region_panaji" translatable="false">Panaji</string>
+    <string name="sample_region_goa" translatable="false">Goa</string>
+    <string name="sample_region_karnataka" translatable="false">Karnataka</string>
+    <string name="sample_message_fuel" translatable="false">Stopping for fuel, 10 minutes.</string>
+    <string name="sample_message_wait" translatable="false">Waiting at the viewpoint.</string>
+    <string name="sample_message_ok" translatable="false">All OK, right behind you.</string>
+    <string name="sample_regroup_notice" translatable="false">Regroup at the viewpoint</string>
+    <string name="sample_recent_market" translatable="false">Market</string>
+    <string name="sample_recent_station" translatable="false">Bus station</string>
+    <string name="sample_hours" translatable="false">08:00 to 22:00</string>
+    <string name="sample_phone" translatable="false">+91 00000 00000</string>
+    <string name="sample_tag_wifi" translatable="false">Wi-Fi</string>
+    <string name="sample_tag_parking" translatable="false">Parking</string>
+    <string name="sample_tag_wheelchair" translatable="false">Wheelchair access</string>
+    <string name="sample_trip" translatable="false">Coast ride</string>
+    <string name="sample_trip_detail" translatable="false">3 stops · 64 km</string>
+    <string name="sample_turn_instruction" translatable="false">Turn right onto Riverside road</string>
+    <string name="sample_alert_camera" translatable="false">Speed camera in 400 m</string>
+    <string name="sample_arrival" translatable="false">Arrive 10:42</string>
+</resources>

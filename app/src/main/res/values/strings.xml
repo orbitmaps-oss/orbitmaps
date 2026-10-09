@@ -5,4 +5,258 @@
     <string name="osm_attribution_open">Open the OpenStreetMap copyright page</string>
     <string name="map_region_missing">No offline map region is installed.</string>
     <string name="map_load_failed">The offline map couldn\'t be loaded.</string>
+
+    <!-- Shared -->
+    <string name="not_available_yet">Not available yet. This screen is a preview.</string>
+    <string name="sample_data_note">Preview: sample data, not real places or people.</string>
+    <!-- Joins two short phrases, e.g. "Near the bridge · 12 min ago" and "3 say still there". -->
+    <string name="two_parts">%1$s · %2$s</string>
+    <string name="action_back">Back</string>
+    <string name="action_close">Close</string>
+    <string name="action_profile">Profile</string>
+    <string name="action_layers">Layers and themes</string>
+    <string name="action_contribute">Contribute</string>
+    <string name="action_go">Go</string>
+    <string name="action_save">Save</string>
+    <string name="action_confirm">Confirm</string>
+    <string name="action_share">Share</string>
+    <string name="action_rate">Rate</string>
+    <string name="action_start">Start</string>
+    <string name="action_send">Send</string>
+    <string name="action_still_there">Still there</string>
+    <!-- %1$s is the region name -->
+    <string name="offline_pill">Offline · %1$s</string>
+
+    <!-- Bottom sheet -->
+    <string name="sheet_handle">Sheet handle. Tap to change height</string>
+    <string name="sheet_state_peek">Lowered</string>
+    <string name="sheet_state_half">Half height</string>
+    <string name="sheet_state_full">Full height</string>
+
+    <!-- Labels -->
+    <string name="tag_new">New</string>
+    <string name="tag_confirmed">Confirmed</string>
+    <string name="tag_compiled">Compiled from source</string>
+    <plurals name="tag_confirmed_by">
+        <item quantity="one">Confirmed by %d</item>
+        <item quantity="other">Confirmed by %d</item>
+    </plurals>
+
+    <!-- Categories -->
+    <string name="category_food">Food</string>
+    <string name="category_fuel">Fuel</string>
+    <string name="category_ev">EV</string>
+    <string name="category_trails">Trails</string>
+    <string name="category_hospital">Hospital</string>
+    <string name="category_shop">Shop</string>
+
+    <!-- Home sheet (windows 1 to 3) -->
+    <string name="search_hint">Search offline maps</string>
+    <string name="home_shortcuts">Shortcuts</string>
+    <string name="shortcut_home">Home</string>
+    <string name="shortcut_work">Work</string>
+    <string name="shortcut_saved">Saved</string>
+    <string name="home_near_you">Near you now</string>
+    <!-- %1$s is a category, %2$.1f a distance in kilometres -->
+    <string name="place_category_distance">%1$s · %2$.1f km</string>
+    <string name="community_title">Community</string>
+    <string name="community_for_you">For you</string>
+    <string name="community_road">Road</string>
+    <string name="community_events">Events</string>
+    <string name="community_outdoors">Outdoors</string>
+    <string name="community_weekend_title">This weekend</string>
+    <!-- %1$s is a place, %2$d minutes -->
+    <string name="report_where_when">%1$s · %2$d min ago</string>
+    <plurals name="report_still_there_count">
+        <item quantity="one">%d says still there</item>
+        <item quantity="other">%d say still there</item>
+    </plurals>
+
+    <!-- Reports -->
+    <string name="report_pothole">Pothole</string>
+    <string name="report_closed_road">Closed road</string>
+    <string name="report_flooding">Flooding</string>
+    <string name="report_landslide">Landslide</string>
+    <string name="report_speed_check">Speed check</string>
+    <string name="report_fuel_price">Fuel price</string>
+
+    <!-- Search (window 4) -->
+    <string name="search_title">Search</string>
+    <string name="search_offline_note">Results come from the regions on this phone. Nothing is sent anywhere.</string>
+    <string name="search_recent">Recent searches</string>
+    <string name="search_results">Results</string>
+    <string name="search_no_results">No matching places in your offline regions.</string>
+
+    <!-- Place details (window 5) -->
+    <!-- %1$.1f is an average rating out of 5 -->
+    <string name="place_rating_from_visits">%1$.1f from verified visits</string>
+    <string name="place_rating_none">Not rated yet</string>
+    <string name="place_rating_explainer">Only people who visited can rate; averages show after 5 ratings.</string>
+    <string name="place_hours">Opening hours</string>
+    <string name="place_phone">Phone</string>
+    <string name="place_credit">© OpenStreetMap contributors, ODbL</string>
+
+    <!-- Route preview (window 6) -->
+    <!-- %1$s is a place name -->
+    <string name="route_to">Route to %1$s</string>
+    <string name="mode_car">Car</string>
+    <string name="mode_bike">Bike</string>
+    <string name="mode_walk">Walk</string>
+    <string name="route_fastest">Fastest</string>
+    <string name="route_shortest">Shortest</string>
+    <!-- %1$s is the route name, %2$d minutes, %3$.1f kilometres -->
+    <string name="route_summary">%1$s · %2$d min · %3$.1f km</string>
+    <plurals name="route_alert_cameras">
+        <item quantity="one">%d speed camera</item>
+        <item quantity="other">%d speed cameras</item>
+    </plurals>
+    <plurals name="route_alert_hazards">
+        <item quantity="one">%d hazard</item>
+        <item quantity="other">%d hazards</item>
+    </plurals>
+
+    <!-- Glance mode (windows 7 to 9) -->
+    <string name="glance_distance_m">%1$d m</string>
+    <string name="glance_speed_kmh">%1$d km/h</string>
+    <!-- Read by TalkBack: %1$d is the current speed, %2$d the speed limit -->
+    <string name="glance_speed_description">Speed %1$d km/h, limit %2$d km/h</string>
+    <!-- %1$d minutes, %2$.1f kilometres -->
+    <string name="glance_eta">%1$d min · %2$.1f km</string>
+    <string name="glance_more">More</string>
+    <string name="glance_less">Less</string>
+    <string name="glance_report">Report</string>
+    <string name="glance_add_stop">Add stop</string>
+    <string name="glance_share_eta">Share ETA</string>
+    <string name="glance_end">End</string>
+
+    <!-- Contribute (window 10) -->
+    <string name="contribute_title">Contribute</string>
+    <string name="contribute_report_here">Report here</string>
+    <string name="contribute_improve">Improve the map</string>
+    <string name="contribute_add_place">Add a place</string>
+    <string name="contribute_add_place_hint">Visible to everyone at once, labelled New</string>
+    <string name="contribute_fix_map">Fix the map</string>
+    <string name="contribute_fix_map_hint">Leave a note for OpenStreetMap mappers</string>
+
+    <!-- Add a place (window 11) -->
+    <string name="add_place_title">Add a place</string>
+    <string name="add_place_spot_check">At-the-spot check</string>
+    <string name="add_place_spot_check_hint">You must be within 150 m. Location checks come in a later version.</string>
+    <string name="add_place_name">Name</string>
+    <string name="add_place_category">Category</string>
+    <string name="add_place_hours">Opening hours</string>
+    <string name="add_place_phone">Phone number</string>
+    <string name="add_place_not_copied">I did not copy this from another map or website.</string>
+    <string name="add_place_publish">Publish</string>
+    <string name="add_place_licence">Places you add are shared under the ODbL so everyone can use them.</string>
+
+    <!-- Layers and themes (window 12) -->
+    <string name="layers_title">Layers and themes</string>
+    <string name="layers_theme">Map theme</string>
+    <string name="layers_theme_later">Night, Rider and Trek map styles come in a later version.</string>
+    <string name="layers_overlays">Overlays</string>
+    <string name="theme_day">Day</string>
+    <string name="theme_night">Night</string>
+    <string name="theme_rider">Rider</string>
+    <string name="theme_trek">Trek</string>
+    <string name="overlay_hazards">Hazards</string>
+    <string name="overlay_cameras">Speed cameras</string>
+    <string name="overlay_school_zones">School zones</string>
+    <string name="overlay_ev">EV chargers</string>
+    <string name="overlay_trails">Trails</string>
+
+    <!-- Group trip and chat (windows 13 and 14) -->
+    <string name="group_title">Group trip</string>
+    <string name="group_radio_disconnected">Radio not connected</string>
+    <string name="group_radio_hint">Works with mesh radios over Bluetooth. Coming in a later version.</string>
+    <string name="group_region_unknown">Region not checked</string>
+    <string name="group_members">Members</string>
+    <!-- %1$.1f kilometres, %2$d minutes -->
+    <plurals name="group_member_seen">
+        <item quantity="one">%1$.1f km away · seen %2$d min ago</item>
+        <item quantity="other">%1$.1f km away · seen %2$d min ago</item>
+    </plurals>
+    <string name="group_quick_status">Quick status</string>
+    <string name="status_stop">Stop</string>
+    <string name="status_fuel_break">Fuel break</string>
+    <string name="status_wait">Wait for me</string>
+    <string name="status_all_ok">All OK</string>
+    <string name="status_need_help">Need help</string>
+    <string name="group_chat">Group chat</string>
+    <string name="group_invite">Invite</string>
+    <string name="group_honest_wording">May help where there is no signal. Not an emergency service; carry other ways to call for help.</string>
+    <string name="group_regroup_hint">Regroup point</string>
+    <string name="group_message_hint">Message</string>
+    <string name="delivery_sent">Sent</string>
+    <string name="delivery_relayed">Heard by a relay</string>
+    <string name="delivery_acknowledged">Delivered</string>
+
+    <!-- Profile menu and pages (windows 15 to 19) -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_not_signed_in">Using without an account</string>
+    <string name="profile_sign_in_hint">Optional: sign in only to sync your saved places, encrypted.</string>
+    <string name="profile_signed_in">Signed in for sync</string>
+    <string name="profile_manage_account">Manage your account and recovery phrase</string>
+    <string name="profile_contributions">Your contributions</string>
+    <string name="profile_contributions_hint">Counted on this phone only; never linked to an account</string>
+    <string name="saved_title">Saved and trips</string>
+    <string name="saved_sync_off">Sync is off</string>
+    <string name="saved_sync_on">Synced, end-to-end encrypted</string>
+    <string name="saved_on_phone">Your lists are stored on this phone.</string>
+    <string name="saved_places">Saved places</string>
+    <string name="saved_trips">Trips</string>
+    <string name="regions_title">Offline regions</string>
+    <string name="regions_wifi_only">Update on Wi-Fi only</string>
+    <string name="regions_wifi_only_hint">Daily changes download only on Wi-Fi.</string>
+    <string name="regions_size_mb">%1$d MB</string>
+    <string name="regions_ready">Ready</string>
+    <string name="regions_download">Download</string>
+    <string name="privacy_title">Privacy and settings</string>
+    <string name="privacy_summary">Nothing leaves your phone unless you switch it on here.</string>
+    <string name="privacy_search_history">Keep search history</string>
+    <string name="privacy_search_history_hint">Stored on this phone only</string>
+    <string name="privacy_share_hazards">Share hazard reports</string>
+    <string name="privacy_share_hazards_hint">Sends only the hazard\'s spot, type and time; no ID</string>
+    <string name="privacy_stream_tiles">Browse undownloaded areas</string>
+    <string name="privacy_stream_tiles_hint">Contacts our file server for areas you have not downloaded</string>
+    <string name="privacy_crash_reports">Offer to send crash reports</string>
+    <string name="privacy_crash_reports_hint">You see each report and choose whether to send it</string>
+    <string name="privacy_clear_history">Clear history</string>
+    <string name="about_title">About and credits</string>
+    <!-- %1$s is the app version -->
+    <string name="about_version">Version %1$s</string>
+    <string name="about_promise">Private and offline. No ads, no tracking, no account needed.</string>
+    <string name="about_credits">Credits and licences</string>
+    <string name="about_osm_licence">Map data, ODbL</string>
+    <string name="about_app_licence">App licence: GPL-3.0-or-later</string>
+    <string name="about_source_code">View the source code</string>
+    <string name="about_data_repository">Open map data repository</string>
+    <string name="about_data_repository_hint">Places and reports added by the community, ODbL</string>
+    <string name="about_support">Support the project</string>
+
+    <!-- Sign-in (windows 20 to 22) -->
+    <string name="sign_in_title">Sign in to sync</string>
+    <string name="sign_in_explainer">Signing in is optional. It only lets your saved places follow you to a new phone, end-to-end encrypted so we cannot read them.</string>
+    <string name="sign_in_google">Continue with Google</string>
+    <string name="sign_in_email">Continue with email</string>
+    <string name="sign_in_skip">Skip, use without account</string>
+    <string name="sign_in_not_linked">Your contributions are never linked to your account.</string>
+    <string name="email_title">Email code</string>
+    <string name="email_address">Email address</string>
+    <string name="email_code">6-digit code</string>
+    <string name="email_code_hint">The code expires in 10 minutes. We don\'t keep your email address.</string>
+    <string name="email_verify">Verify</string>
+    <string name="email_resend">Resend code</string>
+    <string name="account_title">Account</string>
+    <string name="account_method">Signed in with</string>
+    <string name="account_method_email">Email</string>
+    <string name="account_recovery_phrase">Recovery phrase</string>
+    <string name="account_recovery_phrase_hint">12 words that unlock your synced data. Without them it cannot be read.</string>
+    <string name="account_move_phone">Move to a new phone</string>
+    <string name="account_move_phone_hint">Scan a QR code on the new phone</string>
+    <string name="account_sync_settings">Sync settings</string>
+    <string name="account_sign_out">Sign out</string>
+    <string name="account_delete">Delete account</string>
+    <string name="account_delete_hint">Deletes the account, sessions and synced data at once</string>
+    <string name="account_contributions_separate">Contributions stay anonymous and separate from this account</string>
 </resources>
