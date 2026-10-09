@@ -4,6 +4,7 @@ package `in`.orbitmaps.app.map
 
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.location.Location
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,6 +40,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import `in`.orbitmaps.app.Attribution
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.location.DeviceLocation
 import `in`.orbitmaps.app.net.MapMode
 import `in`.orbitmaps.app.net.OnlineData
 import `in`.orbitmaps.core.model.LatLon
@@ -50,6 +52,9 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
+import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.modes.CameraMode
+import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
@@ -76,13 +81,17 @@ private sealed interface MapState {
  *
  * @param bottomInset extra space below the attribution, for a bottom sheet drawn over the map.
  * @param onCenterChange called with the map centre when the camera stops moving (stays on the phone).
+ * @param location the user's position for the blue dot, or null (no permission or no fix yet).
+ * @param centerOnMe each time this number changes, the camera moves to [location].
  */
 @Composable
 fun MapScreen(
     modifier: Modifier = Modifier,
     bottomInset: Dp = 0.dp,
     mode: MapMode = MapMode.Offline,
-    onCenterChange: (LatLon) -> Unit = {}
+    onCenterChange: (LatLon) -> Unit = {},
+    location: Location? = null,
+    centerOnMe: Int = 0
 ) {
     val context = LocalContext.current.applicationContext
     var state by remember { mutableStateOf<MapState>(MapState.Loading) }
@@ -101,6 +110,8 @@ fun MapScreen(
             is MapState.Ready -> OfflineMap(
                 current.styleJson,
                 current.limitToRegion,
+                location = location,
+                centerOnMe = centerOnMe,
                 onCenterChange = onCenterChange,
                 onLoadFailed = {
                     if (current.limitToRegion) state = MapState.Failed else streamingFailed = true
@@ -149,6 +160,8 @@ private suspend fun loadStreamingStyle(context: Context): MapState = withContext
 private fun OfflineMap(
     styleJson: String,
     limitToRegion: Boolean,
+    location: Location?,
+    centerOnMe: Int,
     onCenterChange: (LatLon) -> Unit,
     onLoadFailed: () -> Unit
 ) {
@@ -189,7 +202,26 @@ private fun OfflineMap(
     LaunchedEffect(mapView, styleJson, limitToRegion) {
         mapView.getMapAsync { map ->
             limiter.enabled = limitToRegion
-            map.setStyle(Style.Builder().fromJson(styleJson))
+            map.setStyle(Style.Builder().fromJson(styleJson)) { style -> showLocation(context, map, style) }
+        }
+    }
+
+    // The blue dot follows our own location updates; MapLibre's location engine stays off.
+    LaunchedEffect(mapView, location) {
+        val fix = location ?: return@LaunchedEffect
+        mapView.getMapAsync { map ->
+            val style = map.style ?: return@getMapAsync
+            if (!map.locationComponent.isLocationComponentActivated) showLocation(context, map, style)
+            if (map.locationComponent.isLocationComponentActivated) map.locationComponent.forceLocationUpdate(fix)
+        }
+    }
+
+    LaunchedEffect(mapView, centerOnMe) {
+        if (centerOnMe == 0) return@LaunchedEffect
+        val fix = location ?: return@LaunchedEffect
+        mapView.getMapAsync { map ->
+            val zoom = maxOf(map.cameraPosition.zoom, CENTER_ON_ME_ZOOM)
+            map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(fix.latitude, fix.longitude), zoom))
         }
     }
 
@@ -213,6 +245,23 @@ private fun OfflineMap(
     }
 
     AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+}
+
+private const val CENTER_ON_ME_ZOOM = 15.0
+
+/** Shows the blue dot (with heading) once location is allowed. Positions come from [DeviceLocation]. */
+private fun showLocation(context: Context, map: MapLibreMap, style: Style) {
+    if (!DeviceLocation.isPermitted(context)) return
+    val component = map.locationComponent
+    if (!component.isLocationComponentActivated) {
+        component.activateLocationComponent(
+            LocationComponentActivationOptions.Builder(context, style).useDefaultLocationEngine(false).build()
+        )
+    }
+    @Suppress("MissingPermission") // checked by DeviceLocation.isPermitted above
+    component.isLocationComponentEnabled = true
+    component.cameraMode = CameraMode.NONE
+    component.renderMode = RenderMode.COMPASS
 }
 
 /**

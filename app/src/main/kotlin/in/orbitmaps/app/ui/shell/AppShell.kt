@@ -3,6 +3,8 @@
 package `in`.orbitmaps.app.ui.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,6 +48,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.location.DeviceLocation
 import `in`.orbitmaps.app.places.PlaceRepository
 import `in`.orbitmaps.app.places.SamplePlaces
 import `in`.orbitmaps.app.settings.DataSettings
@@ -84,6 +88,8 @@ private val FabSize = 56.dp
  * @param places searches and looks up places, on the phone.
  * @param online whether the map streams our world tiles (false: downloaded data only).
  * @param data the user's data switches; [onDataChange] saves a change.
+ * @param locationPermitted whether location is allowed; [onLocationPermissionResult] re-reads it after
+ *   the permission dialog, and [onCenterOnMe] moves the map to the user.
  */
 @Composable
 fun AppShell(
@@ -94,10 +100,23 @@ fun AppShell(
     modifier: Modifier = Modifier,
     online: Boolean = false,
     data: DataSettings = DataSettings(),
-    onDataChange: (DataSettings.() -> DataSettings) -> Unit = {}
+    onDataChange: (DataSettings.() -> DataSettings) -> Unit = {},
+    locationPermitted: Boolean = false,
+    onLocationPermissionResult: () -> Unit = {},
+    onCenterOnMe: () -> Unit = {}
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val locationOffMessage = stringResource(R.string.location_off)
+    // Asked the first time the user taps "my location", never at startup.
+    val askLocation =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+            onLocationPermissionResult()
+            if (result.values.any { it }) onCenterOnMe() else scope.launch { snackbar.showSnackbar(locationOffMessage) }
+        }
+    val onMyLocation: () -> Unit = {
+        if (locationPermitted) onCenterOnMe() else askLocation.launch(DeviceLocation.PERMISSIONS)
+    }
     val notYetMessage = stringResource(R.string.not_available_yet)
     val notYet: () -> Unit = { scope.launch { snackbar.showSnackbar(notYetMessage) } }
     val back: () -> Unit = { update { back() ?: this } }
@@ -128,6 +147,7 @@ fun AppShell(
             is Destination.Sheet -> {
                 MapControls(
                     online = online,
+                    onMyLocation = onMyLocation,
                     onProfile = { update { open(Destination.Profile) } },
                     onLayers = { update { open(Destination.Layers) } }
                 )
@@ -270,7 +290,7 @@ private fun PageContent(
 
 /** The round profile and layers buttons at the top right, and the offline pill at the top left when offline. */
 @Composable
-private fun MapControls(online: Boolean, onProfile: () -> Unit, onLayers: () -> Unit) {
+private fun MapControls(online: Boolean, onMyLocation: () -> Unit, onProfile: () -> Unit, onLayers: () -> Unit) {
     Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).padding(12.dp)) {
         if (!online) {
             Text(
@@ -289,6 +309,9 @@ private fun MapControls(online: Boolean, onProfile: () -> Unit, onLayers: () -> 
             }
             RoundButton(onClick = onLayers) {
                 Icon(painterResource(R.drawable.ic_layers), contentDescription = stringResource(R.string.action_layers))
+            }
+            RoundButton(onClick = onMyLocation) {
+                Icon(Icons.Filled.LocationOn, contentDescription = stringResource(R.string.action_my_location))
             }
         }
     }

@@ -15,6 +15,8 @@
     <string name="action_close">Close</string>
     <string name="action_profile">Profile</string>
     <string name="action_layers">Layers and themes</string>
+    <string name="action_my_location">Show my location</string>
+    <string name="location_off">Location is off. The map, search and routes still work; turn it on in system settings to see where you are.</string>
     <string name="action_contribute">Contribute</string>
     <string name="action_go">Go</string>
     <string name="action_save">Save</string>

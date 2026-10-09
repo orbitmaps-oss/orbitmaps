@@ -5,9 +5,11 @@ package `in`.orbitmaps.app.settings
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import android.location.Location
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import `in`.orbitmaps.app.location.DeviceLocation
 import `in`.orbitmaps.app.net.HttpFiles
 import `in`.orbitmaps.app.net.MapMode
 import `in`.orbitmaps.app.net.NetworkStatus
@@ -24,6 +26,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.withContext
@@ -99,6 +103,23 @@ class EnvironmentViewModel(application: Application) : AndroidViewModel(applicat
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), MapMode.Offline)
 
     fun update(change: DataSettings.() -> DataSettings) = store.update(change)
+
+    private val permitted = MutableStateFlow(DeviceLocation.isPermitted(application))
+
+    /** Whether the user allowed location; re-read after the permission dialog and when the app resumes. */
+    val locationPermitted: StateFlow<Boolean> = permitted.asStateFlow()
+
+    fun refreshLocationPermission() {
+        permitted.value = DeviceLocation.isPermitted(getApplication())
+    }
+
+    /**
+     * The latest fix while the app is visible and location is allowed, else null. Kept in memory only
+     * (never logged, stored or sent).
+     */
+    val location: StateFlow<Location?> = permitted
+        .flatMapLatest { allowed -> if (allowed) DeviceLocation.updates(getApplication()) else emptyFlow() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), null)
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
