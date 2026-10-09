@@ -7,6 +7,7 @@ ktlint-gradle = "14.2.0"
 compose-bom = "2026.09.00"
 activity-compose = "1.13.0"
 kotlinx-serialization-json = "1.11.0"
+androidx-sqlite = "2.7.1"
 maplibre-android = "13.6.0"
 # Must match the Valhalla version that builds the routing tiles (pipeline/sample_region/build_sample_routing.py).
 valhalla-mobile = "0.6.3"
@@ -21,6 +22,8 @@ androidx-compose-ui = { module = "androidx.compose.ui:ui" }
 androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
 androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
 androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+# Our own SQLite build with FTS5 for offline search; the platform SQLite may lack FTS5.
+androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidx-sqlite" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
 # OpenGL ES variant (not -vulkan) for the widest device and emulator support.

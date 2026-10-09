@@ -22,6 +22,7 @@ There are two scopes:
 | Component | Coordinates | Licence | Why |
 |---|---|---|---|
 | AndroidX (Activity, Compose, Core, Lifecycle, SavedState, Window, …) | `androidx.*:*` | Apache-2.0 | UI toolkit and Android support libraries |
+| AndroidX SQLite bundled driver 2.7.1 | `androidx.*:*` (`androidx.sqlite:sqlite-bundled`) | Apache-2.0; the SQLite inside is public domain | Offline search: ships its own SQLite (3.53) compiled with FTS5 and R-Tree, because the platform SQLite may lack FTS5 |
 | Kotlin standard library | `org.jetbrains.kotlin:*` | Apache-2.0 | Language runtime (also the compiler, at build time) |
 | kotlinx.coroutines, kotlinx.serialization | `org.jetbrains.kotlinx:*` | Apache-2.0 | Pulled in by Compose; build tooling too |
 | JetBrains annotations | `org.jetbrains:annotations` | Apache-2.0 | Nullability annotations |
@@ -154,4 +155,3 @@ was committed. Total size: **1,335,997 bytes** (glyphs 1,011,353; sprites and th
 | Component | Licence | URL | Note |
 |---|---|---|---|
 | Ferrostar | BSD-3-Clause | https://github.com/stadiamaps/ferrostar | Navigation core and UI |
-| SQLite (FTS5) | Public domain | https://sqlite.org | Offline search |
