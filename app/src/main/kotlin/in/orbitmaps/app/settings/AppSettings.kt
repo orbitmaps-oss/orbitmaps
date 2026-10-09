@@ -8,16 +8,25 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import `in`.orbitmaps.app.net.HttpFiles
 import `in`.orbitmaps.app.net.MapMode
 import `in`.orbitmaps.app.net.NetworkStatus
+import `in`.orbitmaps.app.net.OnlineData
+import `in`.orbitmaps.app.net.PMTILES_MAGIC
 import `in`.orbitmaps.app.net.chooseMapMode
 import `in`.orbitmaps.app.net.networkStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transformLatest
+import kotlinx.coroutines.withContext
 
 /** The user's data switches (window 18), stored on the phone only and excluded from backups. */
 data class DataSettings(
@@ -57,6 +66,7 @@ class AppSettings(context: Context) {
 }
 
 /** Settings, network status and the resulting map mode, kept across configuration changes. */
+@OptIn(ExperimentalCoroutinesApi::class)
 class EnvironmentViewModel(application: Application) : AndroidViewModel(application) {
     private val store = AppSettings(application)
     val settings: StateFlow<DataSettings> = store.settings
@@ -66,12 +76,32 @@ class EnvironmentViewModel(application: Application) : AndroidViewModel(applicat
             application
         ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), NetworkStatus.Offline)
 
-    val mapMode: StateFlow<MapMode> = combine(settings, network) { s, n -> chooseMapMode(s.streamMap, n) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), MapMode.Offline)
+    /**
+     * Whether our server has the world map, checked (first bytes only) when streaming is allowed and
+     * the network changes, and again every [RECHECK_MS] while it isn't.
+     */
+    val serverReady: StateFlow<Boolean> = combine(settings, network) { s, n -> s.streamMap && n.online }
+        .distinctUntilChanged()
+        .transformLatest { usable ->
+            emit(false)
+            while (usable) {
+                val ready =
+                    withContext(Dispatchers.IO) { HttpFiles.startsWith(OnlineData.WORLD_TILES_URL, PMTILES_MAGIC) }
+                emit(ready)
+                if (ready) break
+                delay(RECHECK_MS)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), false)
+
+    val mapMode: StateFlow<MapMode> = combine(settings, network, serverReady) { s, n, ready ->
+        chooseMapMode(s.streamMap, n, ready)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS), MapMode.Offline)
 
     fun update(change: DataSettings.() -> DataSettings) = store.update(change)
 
     private companion object {
         const val STOP_TIMEOUT_MS = 5_000L
+        const val RECHECK_MS = 10 * 60 * 1000L
     }
 }

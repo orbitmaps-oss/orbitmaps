@@ -28,9 +28,11 @@ class OnlineDataTest {
     fun mapStreamsOnlyWhenAllowedAndOnline() {
         val wifi = NetworkStatus(online = true, unmetered = true)
         val mobile = NetworkStatus(online = true, unmetered = false)
-        assertEquals(MapMode.Online, chooseMapMode(streamAllowed = true, network = wifi))
-        assertEquals(MapMode.Online, chooseMapMode(streamAllowed = true, network = mobile))
-        assertEquals(MapMode.Offline, chooseMapMode(streamAllowed = false, network = wifi))
-        assertEquals(MapMode.Offline, chooseMapMode(streamAllowed = true, network = NetworkStatus.Offline))
+        assertEquals(MapMode.Online, chooseMapMode(streamAllowed = true, network = wifi, serverReady = true))
+        assertEquals(MapMode.Online, chooseMapMode(streamAllowed = true, network = mobile, serverReady = true))
+        assertEquals(MapMode.Offline, chooseMapMode(streamAllowed = false, network = wifi, serverReady = true))
+        assertEquals(MapMode.Offline, chooseMapMode(true, NetworkStatus.Offline, serverReady = true))
+        // Regression: with the server unreachable the streamed map was blank grey.
+        assertEquals(MapMode.Offline, chooseMapMode(streamAllowed = true, network = wifi, serverReady = false))
     }
 }

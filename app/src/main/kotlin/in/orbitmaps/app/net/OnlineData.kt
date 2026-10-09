@@ -47,9 +47,16 @@ enum class MapMode {
     Offline
 }
 
-/** Streams the world map when the user allows it and the phone is online; otherwise downloaded data only. */
-fun chooseMapMode(streamAllowed: Boolean, network: NetworkStatus): MapMode =
-    if (streamAllowed && network.online) MapMode.Online else MapMode.Offline
+/**
+ * Streams the world map when the user allows it, the phone is online and our server has the world map
+ * ([serverReady]); otherwise downloaded data only. Without the server check the map would turn blank
+ * whenever the server is unreachable, because MapLibre treats missing tiles as empty, not as an error.
+ */
+fun chooseMapMode(streamAllowed: Boolean, network: NetworkStatus, serverReady: Boolean): MapMode =
+    if (streamAllowed && network.online && serverReady) MapMode.Online else MapMode.Offline
+
+/** Every PMTiles v3 archive starts with these bytes. */
+val PMTILES_MAGIC = "PMTiles".toByteArray(Charsets.US_ASCII)
 
 /** The default network's status, updated as it changes. Needs ACCESS_NETWORK_STATE. */
 fun networkStatus(context: Context): Flow<NetworkStatus> = callbackFlow {

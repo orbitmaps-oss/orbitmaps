@@ -26,6 +26,43 @@ object HttpFiles {
     const val USER_AGENT = "OrbitMaps"
     private const val TIMEOUT_MS = 15_000
 
+    /**
+     * Whether [url] answers with content starting with [expectedPrefix], reading only those bytes
+     * (an HTTP range request). Used to check that our server has a file before relying on it.
+     * Blocking: call off the main thread.
+     */
+    fun startsWith(url: String, expectedPrefix: ByteArray): Boolean {
+        val connection = try {
+            URL(url).openConnection() as HttpURLConnection
+        } catch (e: IOException) {
+            return false
+        }
+        return try {
+            connection.connectTimeout = TIMEOUT_MS
+            connection.readTimeout = TIMEOUT_MS
+            connection.instanceFollowRedirects = false
+            connection.useCaches = false
+            connection.setRequestProperty("User-Agent", USER_AGENT)
+            connection.setRequestProperty("Range", "bytes=0-${expectedPrefix.size - 1}")
+            val code = connection.responseCode
+            if (code != HttpURLConnection.HTTP_PARTIAL && code != HttpURLConnection.HTTP_OK) return false
+            val head = ByteArray(expectedPrefix.size)
+            var read = 0
+            connection.inputStream.use { input ->
+                while (read < head.size) {
+                    val n = input.read(head, read, head.size - read)
+                    if (n < 0) break
+                    read += n
+                }
+            }
+            read == head.size && head.contentEquals(expectedPrefix)
+        } catch (e: IOException) {
+            false
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     /** Blocking: call off the main thread. */
     fun download(url: String, target: File): Download {
         val partial = File(target.parentFile, "${target.name}.part")

@@ -86,8 +86,11 @@ fun MapScreen(
 ) {
     val context = LocalContext.current.applicationContext
     var state by remember { mutableStateOf<MapState>(MapState.Loading) }
-    LaunchedEffect(mode) {
-        state = when (mode) {
+    // If our server can't be reached, fall back to downloaded data for the rest of the session.
+    var streamingFailed by remember { mutableStateOf(false) }
+    val effectiveMode = if (streamingFailed) MapMode.Offline else mode
+    LaunchedEffect(effectiveMode) {
+        state = when (effectiveMode) {
             MapMode.Online -> loadStreamingStyle(context)
             MapMode.Offline -> loadOfflineStyle(context)
         }
@@ -99,7 +102,9 @@ fun MapScreen(
                 current.styleJson,
                 current.limitToRegion,
                 onCenterChange = onCenterChange,
-                onLoadFailed = { state = MapState.Failed }
+                onLoadFailed = {
+                    if (current.limitToRegion) state = MapState.Failed else streamingFailed = true
+                }
             )
             MapState.RegionMissing -> CenteredMessage(R.string.map_region_missing)
             MapState.Failed -> CenteredMessage(R.string.map_load_failed)
