@@ -10,4 +10,6 @@
 # Adding a line here needs an explanation in the pull request and an update to PRIVACY.md.
 
 android.permission.INTERNET  # fetch map tiles, routing tiles, search shards and region packs from our own static file host (config/network-hosts.txt); requests carry no identifier, location or query, only which file is wanted (PRIVACY.md)
+android.permission.ACCESS_FINE_LOCATION  # show your position on the map and start routes from where you are, only while the app is in use; computed and kept on the phone, never sent or logged (PRIVACY.md)
+android.permission.ACCESS_COARSE_LOCATION  # the same with approximate location, if you choose that in the permission dialog
 android.permission.ACCESS_NETWORK_STATE  # know whether the phone is offline or on Wi-Fi, to fall back to downloaded data and honour the Wi-Fi-only setting

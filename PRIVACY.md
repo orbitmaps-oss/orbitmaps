@@ -9,7 +9,11 @@ crash-reporting, Google Play Services or Firebase code.
 
 ## What stays on your device
 
-- Your location — used only on the device to show your position and for navigation.
+- Your location — used only on the device to show your position, rank nearby results and start
+  routes. It is read from Android's own location service (no Google Play Services), only while the
+  app is open, after you allow it the first time you tap *Show my location*; approximate location is
+  enough. It is never sent, stored or logged, and it doesn't decide which map files are fetched (the
+  map's centre does).
 - Downloaded region packs (map, search and routing data).
 - Search history, saved places and settings.
 
