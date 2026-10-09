@@ -4,7 +4,10 @@ package `in`.orbitmaps.app.places
 
 import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.search.CategoryGroup
+import `in`.orbitmaps.app.search.IndexedPlace
+import `in`.orbitmaps.app.search.SearchHit
 import `in`.orbitmaps.app.ui.sample.SampleData
+import `in`.orbitmaps.core.model.LatLon
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,11 +27,43 @@ class PlacesTest {
     private val samples = SamplePlaces { names.getValue(it) }
 
     @Test
-    fun indexIdsRoundTripAndSampleIdsAreNotIndexIds() {
+    fun indexIdsRoundTripPerSourceAndSampleIdsAreNotIndexIds() {
         assertEquals("osm:42", PlaceIds.forIndex(42))
-        assertEquals(42L, PlaceIds.indexRowId(PlaceIds.forIndex(42)))
-        assertNull(PlaceIds.indexRowId("cafe"))
-        assertNull(PlaceIds.indexRowId("osm:x"))
+        assertEquals("world:7", PlaceIds.forIndex(7, PlaceSource.World))
+        assertEquals(PlaceSource.Region to 42L, PlaceIds.parse("osm:42"))
+        assertEquals(PlaceSource.World to 7L, PlaceIds.parse("world:7"))
+        assertNull(PlaceIds.parse("cafe"))
+        assertNull(PlaceIds.parse("osm:x"))
+    }
+
+    private fun hit(name: String, lat: Double, lon: Double, score: Double, importance: Int = 30) = SearchHit(
+        IndexedPlace(1, "n1", name, null, "place=town", LatLon(lat, lon), importance, null),
+        distanceKm = 0.0,
+        score = score
+    )
+
+    @Test
+    fun worldDuplicatesOfRegionPlacesAreDropped() {
+        val region = listOf(hit("Panaji", 15.4989, 73.8278, score = 5.0))
+        val world = listOf(hit("Panaji", 15.50, 73.83, score = 9.0), hit("Mumbai", 19.07, 72.88, score = 7.0))
+        val merged = mergeResults(region, world, limit = 10)
+        assertEquals(listOf("Mumbai", "Panaji"), merged.map { it.second.place.name })
+        assertEquals(listOf(PlaceSource.World, PlaceSource.Region), merged.map { it.first })
+    }
+
+    @Test
+    fun sameNameFarAwayIsADifferentPlace() {
+        val region = listOf(hit("Margao", 15.27, 73.96, score = 5.0))
+        val world = listOf(hit("Margao", 40.0, -3.0, score = 1.0))
+        assertEquals(2, mergeResults(region, world, limit = 10).size)
+    }
+
+    @Test
+    fun mergeKeepsTheBestAndPrefersRegionOnTies() {
+        val region = listOf(hit("A", 15.0, 73.0, score = 3.0), hit("B", 15.1, 73.1, score = 1.0))
+        val world = listOf(hit("C", 19.0, 72.0, score = 3.0))
+        val merged = mergeResults(region, world, limit = 2)
+        assertEquals(listOf("A", "C"), merged.map { it.second.place.name })
     }
 
     @Test

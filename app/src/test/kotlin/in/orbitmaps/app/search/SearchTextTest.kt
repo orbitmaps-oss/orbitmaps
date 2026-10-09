@@ -31,6 +31,15 @@ class SearchTextTest {
     }
 
     @Test
+    fun devanagariNasalSpellingsAreFoldedLikeTheIndex() {
+        assertEquals("मुंबई", SearchText.foldSpelling("मुम्बई"))
+        assertEquals("हिंदी", SearchText.foldSpelling("हिन्दी"))
+        assertEquals("दिल्ली", SearchText.foldSpelling("दिल्ली"))
+        assertEquals("\"मुंबई\"*", SearchText.ftsQuery("मुम्बई"))
+        assertEquals(SearchText.ftsQuery("मुंबई"), SearchText.ftsQuery("मुम्बई"))
+    }
+
+    @Test
     fun emptyInputGivesNoQuery() {
         assertNull(SearchText.ftsQuery(""))
         assertNull(SearchText.ftsQuery("  ,.;  "))

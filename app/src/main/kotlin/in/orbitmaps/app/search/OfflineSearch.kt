@@ -23,7 +23,9 @@ data class IndexedPlace(
     val nameEn: String?,
     val category: String,
     val location: LatLon,
-    val importance: Int
+    val importance: Int,
+    /** Where the place is ("Maharashtra, India"); null for region places. */
+    val detail: String?
 )
 
 data class SearchHit(val place: IndexedPlace, val distanceKm: Double, val score: Double)
@@ -34,14 +36,25 @@ object SampleSearch {
     const val INSTALLED_PATH = "regions/panaji-search.sqlite"
 }
 
-/** Installs the sample search index, or returns null if this build doesn't bundle one. */
-suspend fun installSampleSearch(context: Context): File? = when (
-    val result =
-        installAsset(context, SampleSearch.ASSET, SampleSearch.INSTALLED_PATH, RegionInstaller::hasSqliteHeader)
-) {
-    is InstallResult.Installed -> result.file
-    else -> null
+/** The world places index (cities and towns everywhere), bundled in every build when generated. */
+object WorldPlaces {
+    const val ASSET = "places/world-places.sqlite"
+    const val INSTALLED_PATH = "places/world-places.sqlite"
 }
+
+/** Installs the sample search index, or returns null if this build doesn't bundle one. */
+suspend fun installSampleSearch(context: Context): File? =
+    installIndex(context, SampleSearch.ASSET, SampleSearch.INSTALLED_PATH)
+
+/** Installs the world places index, or returns null if this build doesn't bundle one. */
+suspend fun installWorldPlaces(context: Context): File? =
+    installIndex(context, WorldPlaces.ASSET, WorldPlaces.INSTALLED_PATH)
+
+private suspend fun installIndex(context: Context, asset: String, installedPath: String): File? =
+    when (val result = installAsset(context, asset, installedPath, RegionInstaller::hasSqliteHeader)) {
+        is InstallResult.Installed -> result.file
+        else -> null
+    }
 
 /**
  * Offline place search over a region's SQLite FTS5 index (built by
@@ -141,7 +154,8 @@ class OfflineSearch(file: File) : Closeable {
             nameEn = if (isNull(3)) null else getText(3),
             category = getText(4),
             location = location,
-            importance = getLong(7).toInt()
+            importance = getLong(7).toInt(),
+            detail = if (isNull(8)) null else getText(8)
         )
     }
 
@@ -149,10 +163,10 @@ class OfflineSearch(file: File) : Closeable {
 
     companion object {
         /** Must match SCHEMA_VERSION in build_sample_search.py. */
-        const val SCHEMA_VERSION = 1
+        const val SCHEMA_VERSION = 2
         const val DEFAULT_LIMIT = 30
         private const val CANDIDATES = 200
-        private const val COLUMNS = "p.id, p.osm, p.name, p.name_en, p.category, p.lat, p.lon, p.importance"
-        private const val COLUMN_COUNT = 8
+        private const val COLUMNS = "p.id, p.osm, p.name, p.name_en, p.category, p.lat, p.lon, p.importance, p.detail"
+        private const val COLUMN_COUNT = 9
     }
 }

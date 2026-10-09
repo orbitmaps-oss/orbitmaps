@@ -64,7 +64,7 @@ object SearchText {
      * FTS5 syntax in the input ("OR", "-", "*", quotes) is treated as text. Returns null for no words.
      */
     fun ftsQuery(input: String): String? {
-        val tokens = input
+        val tokens = foldSpelling(input)
             .split(Regex("[^\\p{L}\\p{M}\\p{N}]+"))
             .filter { it.isNotEmpty() }
             .map { it.lowercase(Locale.ROOT) }
@@ -72,6 +72,15 @@ object SearchText {
         if (tokens.isEmpty()) return null
         return tokens.joinToString(" ") { "\"${it.replace("\"", "\"\"")}\"*" }
     }
+
+    /**
+     * Devanagari: writes a nasal consonant + virama before another consonant (म्ब) as the anusvara
+     * (ंब), so "मुम्बई" and "मुंबई" search the same. The index stores names folded the same way
+     * (fold_spelling in pipeline/sample_region/build_sample_search.py).
+     */
+    fun foldSpelling(text: String): String = DEVANAGARI_NASAL_CLUSTER.replace(text, "\u0902")
+
+    private val DEVANAGARI_NASAL_CLUSTER = Regex("[\u0919\u091E\u0923\u0928\u092E]\u094D(?=[\u0915-\u0939])")
 
     /**
      * Higher is better. Combines FTS5's bm25 (negative; more negative is a better text match), how

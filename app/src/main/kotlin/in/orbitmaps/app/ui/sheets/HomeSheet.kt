@@ -138,13 +138,20 @@ fun PlaceRow(place: PlaceItem, onClick: () -> Unit, modifier: Modifier = Modifie
         Column(modifier = Modifier.weight(1f)) {
             Text(place.name, style = MaterialTheme.typography.bodyLarge)
             Text(
-                stringResource(R.string.place_category_distance, stringResource(place.category), place.distanceKm),
+                placeSubtitle(place),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         place.status?.let { StatusTag(it, confirmations = place.confirmations) }
     }
+}
+
+/** "Food · 0.4 km", or "Place · 450.2 km · Maharashtra, India" for places outside the regions. */
+@Composable
+fun placeSubtitle(place: PlaceItem): String {
+    val base = stringResource(R.string.place_category_distance, stringResource(place.category), place.distanceKm)
+    return place.detail?.let { stringResource(R.string.two_parts, base, it) } ?: base
 }
 
 @Composable

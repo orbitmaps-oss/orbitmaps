@@ -85,7 +85,7 @@ fun PlaceDetailsSheet(
             place.status?.let { StatusTag(it, confirmations = place.confirmations) }
         }
         Text(
-            stringResource(R.string.place_category_distance, stringResource(place.category), place.distanceKm),
+            placeSubtitle(place),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
