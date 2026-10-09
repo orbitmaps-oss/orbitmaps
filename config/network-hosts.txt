@@ -1,0 +1,17 @@
+# Hosts the app may reach. Checked by scripts/check_network_hosts.py against every http(s) URL in
+# app/src (Kotlin and XML, tests excluded). See AGENTS.md section 2 and PRIVACY.md.
+#
+# Format: one host per line, followed by "#" and the reason (required).
+# [fetch]   the app downloads files from these hosts itself. HTTPS only, no cookies, no identifiers,
+#           no user location or queries: only which file is wanted. Each must be listed in PRIVACY.md.
+# [browser] links the app only opens in the user's browser app; the app never contacts them.
+#
+# Adding a host needs an explanation in the pull request and a PRIVACY.md update.
+
+[fetch]
+data.orbitmaps.in  # our static files on Cloudflare R2: world map tiles, routing tiles, search shards and region packs
+
+[browser]
+www.openstreetmap.org  # "© OpenStreetMap contributors" link to the copyright page (required by ODbL)
+opendatacommons.org  # ODbL licence text
+github.com  # source code link in About

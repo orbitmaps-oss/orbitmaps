@@ -9,4 +9,5 @@
 #
 # Adding a line here needs an explanation in the pull request and an update to PRIVACY.md.
 
-# (none yet)
+android.permission.INTERNET  # fetch map tiles, routing tiles, search shards and region packs from our own static file host (config/network-hosts.txt); requests carry no identifier, location or query, only which file is wanted (PRIVACY.md)
+android.permission.ACCESS_NETWORK_STATE  # know whether the phone is offline or on Wi-Fi, to fall back to downloaded data and honour the Wi-Fi-only setting

@@ -2,7 +2,7 @@
 
 > Pre-alpha overview. Modules are added only when the features that need them arrive.
 
-## Region packs (offline-first)
+## Region packs (on-device first)
 
 A **region pack** is everything the app needs for one area, with no network:
 
@@ -31,8 +31,7 @@ Until region-pack downloads exist, the app shows one development region:
    vector source at `pmtiles://file://<installed path>`. Glyphs and sprites are `asset://` URLs, and
    any `http(s)://` string in the style is rejected.
 4. `MainActivity` turns MapLibre's logging off (log lines can contain tile coordinates) and puts it in
-   offline mode. The manifest removes INTERNET and the other permissions MapLibre's library manifest
-   asks for, so the OS blocks every socket. "© OpenStreetMap contributors" is always shown,
+   offline mode for the bundled region. "© OpenStreetMap contributors" is always shown,
    bottom-start, inside the safe drawing area.
 5. `CameraLimits` keeps the whole viewport inside the region: a minimum zoom at which the region fills
    the map view, and camera-target bounds shrunk by half the view at the current zoom (recomputed on

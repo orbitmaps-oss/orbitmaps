@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-<!-- No permissions yet. Any new permission must be listed, with a reason, in config/permissions-allowlist.txt. -->
+<!-- Every permission must be listed, with a reason, in config/permissions-allowlist.txt (CI checks it). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- MapLibre's library manifest asks for these; the app needs none of them yet.
-         The app is offline-only, so the OS blocks all sockets. Region-pack downloads will add INTERNET
-         back later, and showing the user's position will add location, each with a reason in
-         config/permissions-allowlist.txt (scripts/check_offline.py, scripts/check_permissions.py). -->
-    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <!-- Fetching our own static files (map tiles, routing tiles, search shards); see PRIVACY.md. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- MapLibre's library manifest asks for these; the app doesn't need them. Showing the user's
+         position will add location later, with a reason in config/permissions-allowlist.txt. -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
@@ -20,6 +20,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 

@@ -1,6 +1,6 @@
 # Orbit Maps
 
-**A privacy-first, offline-first maps app for Android.**
+**A privacy-first maps app for Android that works online and offline, computing everything on your phone.**
 
 Orbit Maps shows maps, searches places and plans routes entirely on your device, from region packs
 you download once. No account, no tracking, no ads.
@@ -11,7 +11,8 @@ you download once. No account, no tracking, no ads.
 
 - **Private.** No analytics, ads, trackers, Google Play Services or Firebase. We do not log your
   location, searches or IP address. See [PRIVACY.md](PRIVACY.md).
-- **Offline.** Map, search and routing work with no network, from downloaded region packs.
+- **On your phone.** Map drawing, search and routing run on the device. Online, it streams only static map
+  files from our own server; started trips and downloaded regions keep working with no signal.
 - **Open.** Data from [OpenStreetMap](https://www.openstreetmap.org) and other open sources listed in
   [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md). Code is free software.
 

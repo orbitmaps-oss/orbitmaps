@@ -1,6 +1,6 @@
 # AGENTS.md — rules for AI agents and contributors
 
-Orbit Maps is a public, open-source, **privacy-first, offline-first** maps app for Android, used worldwide.
+Orbit Maps is a public, open-source, **privacy-first, on-device-first** maps app for Android, used worldwide.
 These rules are binding for every change, human or AI. If a task conflicts with them, stop and ask.
 
 ## 1. Privacy first
@@ -13,9 +13,14 @@ These rules are binding for every change, human or AI. If a task conflicts with 
 - Location, history and saved places stay on the device. No silent network calls.
 - Server code (Cloudflare Workers) must not store or log client IPs or request contents.
 
-## 2. Offline first
-- Map display, search and routing must work from downloaded **region packs** with no network.
-- Network is only used for downloading or updating region packs and calling our own open APIs, and the app must degrade gracefully without it.
+## 2. On-device first
+- Map drawing, search and routing are **computed on the phone**. Servers only serve static files (map tiles,
+  routing tiles, search shards, region packs) and our own open APIs. Never use third-party map, search,
+  geocoding or routing services, and never send a search query, route or position to a server.
+- Everything keeps working **offline once its data is on the phone**: downloaded region packs, the bundled world
+  index, cached tiles and saved trip corridors. Without network the app degrades gracefully and says what is missing.
+- The app only contacts hosts in `config/network-hosts.txt`, over HTTPS, with no identifiers or cookies, and every
+  kind of request is described in `PRIVACY.md` (CI checks the hosts).
 
 ## 3. Data sources
 - Use data only from OpenStreetMap, our own open APIs, and sources listed in `docs/DATA_SOURCES.md`.

@@ -6,13 +6,6 @@ from pathlib import Path
 
 import check_offline as co
 
-MANIFEST = """<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="in.orbitmaps.app">
-    {extra}
-</manifest>
-"""
-
-
 class CheckOfflineTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -30,11 +23,6 @@ class CheckOfflineTest(unittest.TestCase):
 
     def tearDown(self):
         self._tmp.cleanup()
-
-    def manifest(self, extra=""):
-        path = self.root / "AndroidManifest.xml"
-        path.write_text(MANIFEST.format(extra=extra), encoding="utf-8")
-        return path
 
     def test_clean_assets_pass_and_licence_texts_are_skipped(self):
         self.assertEqual([], co.remote_url_errors(self.assets))
@@ -54,15 +42,8 @@ class CheckOfflineTest(unittest.TestCase):
     def test_missing_assets_dir_fails(self):
         self.assertEqual(1, len(co.remote_url_errors(self.root / "missing")))
 
-    def test_manifest_without_internet_passes(self):
-        extra = '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />'
-        self.assertEqual([], co.internet_errors([self.manifest(extra)]))
-
-    def test_manifest_with_internet_fails(self):
-        extra = '<uses-permission android:name="android.permission.INTERNET" />'
-        errors = co.internet_errors([self.manifest(extra)])
-        self.assertEqual(1, len(errors))
-        self.assertIn("android.permission.INTERNET", errors[0])
+    def test_arguments_are_rejected(self):
+        self.assertEqual(2, co.main(["check_offline.py", "--manifest", "x.xml"]))
 
 
 if __name__ == "__main__":
