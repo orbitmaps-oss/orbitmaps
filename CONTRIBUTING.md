@@ -17,13 +17,37 @@ Please read [AGENTS.md](AGENTS.md) — its rules apply to every contribution —
 1. Fork, then create a branch from `main` (`feature/…`, `fix/…`).
 2. Make small, focused commits.
 3. **Sign off every commit** (`git commit -s`), see below.
-4. Run the checks locally:
+4. Run the checks locally. `checkAll` runs everything CI runs (build, unit tests, Android Lint,
+   ktlint and the policy scripts); `policyChecks` runs only the fast policy scripts:
    ```sh
-   ./gradlew assembleDebug testDebugUnitTest test lintDebug ktlintCheck
-   python scripts/check_dependencies.py
-   python scripts/check_forbidden_files.py
+   ./gradlew checkAll
    ```
 5. Open a pull request and fill in the template.
+
+## Android Studio setup
+
+1. **Run configurations** are shared in `.run/` and appear in the run menu: *Check all*,
+   *Policy checks*, *Unit tests*, *Lint and ktlint*, *Format Kotlin*, *Fetch sample region* and
+   *Update dependency locks*. The same tasks are in the Gradle panel under `orbitmaps`.
+2. **Git hooks**: turn them on once per clone:
+   ```sh
+   git config core.hooksPath .githooks
+   ```
+   They run from the command line and from Android Studio's Commit and Push dialogs:
+   - `pre-commit` refuses commits on `main`, staged secrets, keystores or IDE files, and new
+     source files without an SPDX line, and runs ktlint when Kotlin files are staged;
+   - `commit-msg` refuses commits without `Signed-off-by:`. Tick **Sign-off commit** under the
+     gear icon in the Commit dialog once and Android Studio adds it for you;
+   - `pre-push` refuses pushes to `main` and runs `./gradlew checkAll`.
+
+   `--no-verify` skips them for one commit or push; CI still runs the same checks.
+3. **Tools**: Python 3 on `PATH` (pass `-Ppython=<path>` to Gradle if it is elsewhere) and Git
+   for Windows on Windows. Gradle uses `JAVA_HOME`; if it is unset, the hooks fall back to
+   Android Studio's bundled JDK.
+4. **AI assistants**: `.claude/settings.json` lets Claude Code run builds, checks and read-only
+   git commands without asking, asks before commits and policy-file edits, and blocks
+   `git push`, Wrangler deploys and reading secrets. Put personal overrides in
+   `.claude/settings.local.json` (gitignored).
 
 ## Developer Certificate of Origin (DCO) and licence grant
 

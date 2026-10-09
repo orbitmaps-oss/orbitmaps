@@ -58,6 +58,8 @@ These rules are binding for every change, human or AI. If a task conflicts with 
 
 ## Commands
 ```sh
+./gradlew checkAll                      # everything CI checks; run before asking for a push
+./gradlew policyChecks                  # only the fast policy scripts
 ./gradlew assembleDebug                 # build
 ./gradlew testDebugUnitTest test        # unit tests (Android + JVM modules)
 ./gradlew lintDebug ktlintCheck         # lint
