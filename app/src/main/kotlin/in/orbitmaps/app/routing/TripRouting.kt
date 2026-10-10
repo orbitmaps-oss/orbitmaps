@@ -92,8 +92,16 @@ class TripRouting(
         }
     }
 
-    /** Downloads the tiles along [route], so the trip can continue offline. */
-    fun saveCorridor(route: RouteSummary): FetchReport = tiles.ensure(TripTiles.forCorridor(route.shape))
+    /**
+     * Downloads the tiles along [route], so the trip can continue offline, then deletes the least
+     * recently used tiles beyond [maxBytes] (never this trip's), so the cache can't grow without bound.
+     */
+    fun saveCorridor(route: RouteSummary, maxBytes: Long = DEFAULT_CACHE_BYTES): FetchReport {
+        val corridor = TripTiles.forCorridor(route.shape)
+        val report = tiles.ensure(corridor)
+        tiles.cleanUp(maxBytes, keep = corridor)
+        return report
+    }
 
     override fun close() {
         router?.close()
@@ -101,6 +109,9 @@ class TripRouting(
     }
 
     companion object {
+        /** Routing tiles kept on the phone beyond the current trip: about 400 MB. */
+        const val DEFAULT_CACHE_BYTES = 400L * 1024 * 1024
+
         /** The folder for the routing data that matches valhalla-mobile's Valhalla version. */
         fun defaultRoot(filesDir: File) = File(filesDir, "routing/valhalla-3.6.3")
     }

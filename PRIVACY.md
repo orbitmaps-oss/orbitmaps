@@ -35,7 +35,8 @@ CI) and only uses HTTPS.
 | **Region packs** and their daily updates | When you download or update a region | Which region and version |
 
 Requests carry **no account, device ID, advertising ID, cookie or location**, only the name of
-the file. Fetched tiles and the corridor of a started trip are kept on the phone so the trip
+the file. The app asks for a generic name ("OrbitMaps") instead of Android's default, which
+includes your phone model. Fetched tiles and the corridor of a started trip are kept on the phone so the trip
 continues without signal; they are deleted automatically after a while unless you save the area.
 
 Turn off *Browse undownloaded areas* in **Privacy and settings** to use only downloaded data.

@@ -33,19 +33,58 @@ folder carries the index schema version (`v2`, `SCHEMA_VERSION` in `build_sample
    $0.015 per GB-month, and operations are billed per million (check current pricing).
 5. HTTPS only (the app refuses plain http). No CORS is needed for the app.
 
+## Staying at zero cost
+
+Everything below is chosen so the running cost is ₹0 while the project is small, and a few cents
+when it grows. Prices are from memory: check Cloudflare's current R2 pricing before relying on them.
+
+| Free allowance (per month) | Limit | How we stay inside |
+|---|---|---|
+| R2 storage | 10 GB | Ship India first and budget the files (below); never the whole planet at once |
+| R2 reads (Class B) | 10 million | A cache rule on `data.orbitmaps.in`: cached answers don't reach R2, so most tile requests are free |
+| R2 writes (Class A) | 1 million | Build rarely (monthly) and upload only changed files |
+| R2 download traffic | unlimited, no egress fees | Nothing to do |
+| Builds | GitHub Actions is free for public repositories | Build by zone on free runners; rent a machine only for the full-country routing build, if ever |
+| Servers | none | Everything is static files; the phone does the computing |
+
+Going over 10 GB is not a cliff: extra storage is about $0.015 per GB-month, so 20 GB is roughly
+15 cents a month.
+
+### A 10 GB budget for the Indian subcontinent (estimates, measure on the first build)
+
+| File | Target | How to stay inside it |
+|---|---|---|
+| World map (`v1/tiles/world.pmtiles`) | at most 4 GB | Run the `pmtiles extract --dry-run` first; use `--maxzoom=14` or `13` if it is bigger. The app draws deeper zoom levels by enlarging the last one |
+| Routing tiles (`v1/routing/...`) | at most 3 GB | Build India (and neighbours later) by zone; tiles are separate files, so zones can be added one by one |
+| Search shards (`v1/search/v2/...`) | at most 1 GB | Start with the pilot areas only; elsewhere the bundled world index of cities answers |
+| Headroom | 2 GB | Old versions kept for rollback, test files |
+
+### On the phone
+
+The app keeps its downloaded routing tiles under about 400 MB (the least recently used go first,
+never the tiles of the trip being driven), and map tiles are cached by MapLibre within its own
+limit, so using the app doesn't fill the phone either.
+
 ## 1. World map tiles
 
 Pick one dated planet build whose **tileset version matches the bundled style**
 (`@protomaps/basemaps` in `pipeline/style/`, tileset 4.x; see
-<https://build-metadata.protomaps.dev/builds.json>), download it once and upload it. Never
+<https://build-metadata.protomaps.dev/builds.json>) and cut out the area you serve. Never
 hot-link Protomaps' build server from the app.
 
+For the Indian subcontinent (India, Pakistan, Nepal, Bhutan, Bangladesh, Sri Lanka), straight from
+the pinned build, downloading only the tiles in the box:
+
 ```sh
-# about 120 GB (estimate); any machine with the disk space
-curl -fLO https://build.protomaps.com/YYYYMMDD.pmtiles
-pmtiles verify YYYYMMDD.pmtiles
-rclone copyto YYYYMMDD.pmtiles r2:orbitmaps-data/v1/tiles/world.pmtiles --s3-upload-cutoff 100M
+pmtiles extract https://build.protomaps.com/20260811.pmtiles india.pmtiles   --bbox=60.5,5.5,98.0,37.5 --maxzoom=15 --dry-run   # prints the size first
+pmtiles extract https://build.protomaps.com/20260811.pmtiles india.pmtiles   --bbox=60.5,5.5,98.0,37.5 --maxzoom=15
+pmtiles verify india.pmtiles
+rclone copyto india.pmtiles r2:orbitmaps-data/v1/tiles/world.pmtiles --s3-chunk-size 64M --progress
 ```
+
+The dashboard's upload button is limited to a few hundred MB, so large files go through rclone with
+an R2 API token scoped to this bucket (keep the token out of the repository and chats). The
+whole planet is about 120 GB (estimate); extend the box later, within the budget above.
 
 Record the build date in the release notes. Updating means uploading a newer build under the same
 name only when the tileset version still matches the style; otherwise update the style first.

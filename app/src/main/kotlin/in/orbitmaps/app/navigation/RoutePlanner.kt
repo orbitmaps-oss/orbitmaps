@@ -5,6 +5,7 @@ package `in`.orbitmaps.app.navigation
 import android.app.Application
 import `in`.orbitmaps.app.map.SampleRegion
 import `in`.orbitmaps.app.routing.Costing
+import `in`.orbitmaps.app.routing.FetchReport
 import `in`.orbitmaps.app.routing.OfflineRouter
 import `in`.orbitmaps.app.routing.RouteSummary
 import `in`.orbitmaps.app.routing.RoutingException
@@ -77,6 +78,16 @@ class RoutePlanner(private val application: Application, private val fetchAllowe
                 is TripPlan.NoRoute -> if (plan.tiles.failed > 0) PlanOutcome.NeedsData else PlanOutcome.NoRoute
             }
         }
+    }
+
+    /**
+     * Saves the tiles along a started trip so it continues without signal. Only when fetching is
+     * allowed and the route didn't come from a downloaded region. Runs beside planning (it only
+     * writes tile files) and never throws.
+     */
+    suspend fun saveCorridor(route: RouteSummary): FetchReport? {
+        if (!fetchAllowed()) return null
+        return withContext(Dispatchers.IO) { trips.saveCorridor(route) }
     }
 
     override fun close() {

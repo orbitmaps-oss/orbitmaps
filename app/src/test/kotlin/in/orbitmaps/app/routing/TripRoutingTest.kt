@@ -230,4 +230,21 @@ class TripRoutingTest {
         assertEquals(1, (plan as TripPlan.NoRoute).tiles.failed)
         assertEquals(emptyList<String>(), requests.map { it.first })
     }
+
+    @Test
+    fun saveCorridorKeepsTheTripAndTrimsOlderTilesOverTheLimit() {
+        val shape = listOf(panaji, LatLon(15.52, 73.82), porvorim)
+        val corridor = TripTiles.forCorridor(shape)
+        val old = GraphTile(2, 5)
+        serve(corridor + old)
+        val trips = TripRouting(tmp.newFolder("routing"), baseUrl) { FakeRouter { error("unused") } }
+        trips.tiles.ensure(listOf(old))
+        trips.tiles.file(old).setLastModified(1_000L)
+
+        val report = trips.saveCorridor(RouteSummary(6.1, 600.0, 7, shape), maxBytes = 1L)
+
+        assertTrue(report.complete)
+        assertFalse("an older tile outside the trip goes first", trips.tiles.has(old))
+        assertTrue("the trip's own tiles stay even over the limit", corridor.all(trips.tiles::has))
+    }
 }

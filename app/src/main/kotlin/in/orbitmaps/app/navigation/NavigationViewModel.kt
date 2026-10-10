@@ -138,6 +138,10 @@ class NavigationViewModel(application: Application) : AndroidViewModel(applicati
             simulated = useSimulation
         )
         _plan.value = PlanUi.Idle
+        // Keep the road tiles along the route, so the trip and rerouting survive losing signal.
+        if (!ready.fromRegion && !ready.sample) {
+            viewModelScope.launch { planner.saveCorridor(ready.summary) }
+        }
         driveJob = viewModelScope.launch {
             launch { controller.state.collect { _drive.value = it } }
             if (useSimulation) launch { simulate(ready.route) }
