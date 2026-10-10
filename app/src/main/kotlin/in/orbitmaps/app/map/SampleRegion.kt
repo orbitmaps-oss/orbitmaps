@@ -22,4 +22,7 @@ object SampleRegion {
     /** Same bbox as the extract (73.734,15.401,73.921,15.581). */
     val southWest = LatLon(15.401, 73.734)
     val northEast = LatLon(15.581, 73.921)
+
+    fun contains(point: LatLon): Boolean = point.latitude in southWest.latitude..northEast.latitude &&
+        point.longitude in southWest.longitude..northEast.longitude
 }

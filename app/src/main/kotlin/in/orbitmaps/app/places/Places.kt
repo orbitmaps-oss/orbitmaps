@@ -36,6 +36,8 @@ data class PlaceItem(
     val distanceKm: Double,
     /** Where the place is ("Maharashtra, India"), for places outside the downloaded regions. */
     val detail: String? = null,
+    /** The place's position, for routing to it; null for places without one. */
+    val location: LatLon? = null,
     /** Community status; null for OpenStreetMap data, which has no New/Confirmed label. */
     val status: Status? = null,
     val confirmations: Int = 0,
@@ -136,6 +138,7 @@ class SamplePlaces(private val resolve: (Int) -> String) : PlaceRepository {
         status = place.status,
         confirmations = place.confirmations,
         rating = place.rating,
+        location = LatLon(place.lat, place.lon),
         isSample = true
     )
 
@@ -236,7 +239,8 @@ class AppPlaces(private val application: Application) :
         name = place.name,
         category = SearchText.categoryLabel(place.category),
         distanceKm = distanceKm,
-        detail = place.detail
+        detail = place.detail,
+        location = place.location
     )
 
     override fun close() {

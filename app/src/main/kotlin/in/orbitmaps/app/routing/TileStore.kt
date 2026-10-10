@@ -38,6 +38,9 @@ class TileStore(
         return marker.isFile && clock() - marker.lastModified() < ABSENT_DAYS * DAY_MS
     }
 
+    /** The tiles of [tiles] that are neither here nor known to be absent: what offline use would lack. */
+    fun missing(tiles: Collection<GraphTile>): List<GraphTile> = tiles.filter { !has(it) && !knownAbsent(it) }
+
     /** Makes sure every tile in [tiles] is here or known to be absent. Blocking: call off the main thread. */
     fun ensure(tiles: Collection<GraphTile>): FetchReport {
         var downloaded = 0

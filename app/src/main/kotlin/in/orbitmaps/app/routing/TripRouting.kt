@@ -48,9 +48,12 @@ class TripRouting(
     private var router: Router? = null
 
     /** The engine, built once from the server's config (fetched on first use and kept). */
-    private fun router(): Router? {
+    private fun router(allowFetch: Boolean): Router? {
         router?.let { return it }
-        if (!template.isFile && HttpFiles.download("$baseUrl/valhalla.json", template) !is Download.Saved) return null
+        if (!template.isFile) {
+            if (!allowFetch) return null
+            if (HttpFiles.download("$baseUrl/valhalla.json", template) !is Download.Saved) return null
+        }
         return try {
             config.writeText(ValhallaJson.tileDirConfig(template.readText(), tiles.dir, File(root, "data")))
             engine(config).also { router = it }
@@ -64,9 +67,24 @@ class TripRouting(
         }
     }
 
-    fun plan(from: LatLon, to: LatLon, costing: Costing = Costing.Car, language: String? = null): TripPlan {
-        val report = tiles.ensure(TripTiles.forPlanning(from, to))
-        val router = router() ?: return TripPlan.NoEngine
+    /**
+     * @param fetch false uses only what is on the phone (no network); tiles that are missing are
+     *   counted as [FetchReport.failed], so a failed route can be told apart from "no road there".
+     */
+    fun plan(
+        from: LatLon,
+        to: LatLon,
+        costing: Costing = Costing.Car,
+        language: String? = null,
+        fetch: Boolean = true
+    ): TripPlan {
+        val needed = TripTiles.forPlanning(from, to)
+        val report = if (fetch) {
+            tiles.ensure(needed)
+        } else {
+            FetchReport(downloaded = 0, alreadyHere = 0, absent = 0, failed = tiles.missing(needed).size, bytes = 0)
+        }
+        val router = router(allowFetch = fetch) ?: return TripPlan.NoEngine
         return try {
             TripPlan.Ready(router.route(from, to, costing, language), report)
         } catch (e: RoutingException) {

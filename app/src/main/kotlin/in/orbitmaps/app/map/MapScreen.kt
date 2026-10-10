@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -59,6 +60,14 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
+import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.geojson.Feature
+import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.LineString
+import org.maplibre.geojson.Point
 
 /** The OSM attribution shown over the map. It must stay visible whenever map data is on screen. */
 @StringRes
@@ -83,6 +92,8 @@ private sealed interface MapState {
  * @param onCenterChange called with the map centre when the camera stops moving (stays on the phone).
  * @param location the user's position for the blue dot, or null (no permission or no fix yet).
  * @param centerOnMe each time this number changes, the camera moves to [location].
+ * @param routeLine the route to draw, or null; while not [follow]ing, the camera fits it.
+ * @param follow keep the camera on the user's position (while navigating).
  */
 @Composable
 fun MapScreen(
@@ -91,9 +102,12 @@ fun MapScreen(
     mode: MapMode = MapMode.Offline,
     onCenterChange: (LatLon) -> Unit = {},
     location: Location? = null,
-    centerOnMe: Int = 0
+    centerOnMe: Int = 0,
+    routeLine: List<LatLon>? = null,
+    follow: Boolean = false
 ) {
     val context = LocalContext.current.applicationContext
+    val bottomInsetPx = with(LocalDensity.current) { bottomInset.roundToPx() }
     var state by remember { mutableStateOf<MapState>(MapState.Loading) }
     // If our server can't be reached, fall back to downloaded data for the rest of the session.
     var streamingFailed by remember { mutableStateOf(false) }
@@ -112,6 +126,9 @@ fun MapScreen(
                 current.limitToRegion,
                 location = location,
                 centerOnMe = centerOnMe,
+                routeLine = routeLine,
+                follow = follow,
+                bottomInsetPx = bottomInsetPx,
                 onCenterChange = onCenterChange,
                 onLoadFailed = {
                     if (current.limitToRegion) state = MapState.Failed else streamingFailed = true
@@ -162,10 +179,16 @@ private fun OfflineMap(
     limitToRegion: Boolean,
     location: Location?,
     centerOnMe: Int,
+    routeLine: List<LatLon>?,
+    follow: Boolean,
+    bottomInsetPx: Int,
     onCenterChange: (LatLon) -> Unit,
     onLoadFailed: () -> Unit
 ) {
     val currentOnCenterChange = rememberUpdatedState(onCenterChange)
+    val currentLine = rememberUpdatedState(routeLine)
+    val currentFollow = rememberUpdatedState(follow)
+    val hasLocation = rememberUpdatedState(location != null)
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val limiter = remember { RegionCameraLimiter() }
@@ -202,8 +225,42 @@ private fun OfflineMap(
     LaunchedEffect(mapView, styleJson, limitToRegion) {
         mapView.getMapAsync { map ->
             limiter.enabled = limitToRegion
-            map.setStyle(Style.Builder().fromJson(styleJson)) { style -> showLocation(context, map, style) }
+            map.setStyle(Style.Builder().fromJson(styleJson)) { style ->
+                showLocation(context, map, style, hasLocation.value)
+                showRoute(style, currentLine.value)
+                applyFollow(map, currentFollow.value)
+            }
         }
+    }
+
+    // The route line, and (until navigation starts) a camera that fits all of it above the sheet.
+    LaunchedEffect(mapView, routeLine) {
+        mapView.getMapAsync { map ->
+            val style = map.style ?: return@getMapAsync
+            showRoute(style, routeLine)
+            if (routeLine != null && routeLine.size >= 2 && !currentFollow.value) {
+                val bounds = LatLngBounds.Builder().includes(
+                    routeLine.map {
+                        LatLng(it.latitude, it.longitude)
+                    }
+                ).build()
+                map.easeCamera(
+                    CameraUpdateFactory.newLatLngBounds(
+                        bounds,
+                        FIT_SIDE_PX,
+                        FIT_TOP_PX,
+                        FIT_SIDE_PX,
+                        bottomInsetPx + FIT_SIDE_PX
+                    ),
+                    FIT_MS
+                )
+            }
+        }
+    }
+
+    // While navigating, the camera stays on the user, north-up.
+    LaunchedEffect(mapView, follow) {
+        mapView.getMapAsync { map -> applyFollow(map, follow) }
     }
 
     // The blue dot follows our own location updates; MapLibre's location engine stays off.
@@ -211,7 +268,10 @@ private fun OfflineMap(
         val fix = location ?: return@LaunchedEffect
         mapView.getMapAsync { map ->
             val style = map.style ?: return@getMapAsync
-            if (!map.locationComponent.isLocationComponentActivated) showLocation(context, map, style)
+            if (!map.locationComponent.isLocationComponentActivated) {
+                showLocation(context, map, style, hasLocation = true)
+                applyFollow(map, currentFollow.value)
+            }
             if (map.locationComponent.isLocationComponentActivated) map.locationComponent.forceLocationUpdate(fix)
         }
     }
@@ -248,20 +308,71 @@ private fun OfflineMap(
 }
 
 private const val CENTER_ON_ME_ZOOM = 15.0
+private const val FOLLOW_ZOOM = 16.5
+private const val FIT_SIDE_PX = 80
+private const val FIT_TOP_PX = 220
+private const val FIT_MS = 600
+private const val ROUTE_SOURCE = "orbit-route"
+private const val ROUTE_CASING = "orbit-route-casing"
+private const val ROUTE_LINE = "orbit-route-line"
 
-/** Shows the blue dot (with heading) once location is allowed. Positions come from [DeviceLocation]. */
-private fun showLocation(context: Context, map: MapLibreMap, style: Style) {
-    if (!DeviceLocation.isPermitted(context)) return
+/**
+ * Shows the blue dot (with heading) once there is a position to show: [hasLocation], which is true
+ * when location is allowed and a fix arrived, or while a drive is simulated (debug builds).
+ */
+private fun showLocation(context: Context, map: MapLibreMap, style: Style, hasLocation: Boolean) {
+    if (!hasLocation && !DeviceLocation.isPermitted(context)) return
     val component = map.locationComponent
     if (!component.isLocationComponentActivated) {
         component.activateLocationComponent(
             LocationComponentActivationOptions.Builder(context, style).useDefaultLocationEngine(false).build()
         )
     }
-    @Suppress("MissingPermission") // checked by DeviceLocation.isPermitted above
+    @Suppress("MissingPermission") // our own updates only; MapLibre's location engine is off
     component.isLocationComponentEnabled = true
     component.cameraMode = CameraMode.NONE
     component.renderMode = RenderMode.COMPASS
+}
+
+/** North-up tracking of the user's position while navigating, free camera otherwise. */
+private fun applyFollow(map: MapLibreMap, follow: Boolean) {
+    val component = map.locationComponent
+    if (!component.isLocationComponentActivated) return
+    component.cameraMode = if (follow) CameraMode.TRACKING else CameraMode.NONE
+    component.renderMode = if (follow) RenderMode.GPS else RenderMode.COMPASS
+    if (follow) component.zoomWhileTracking(FOLLOW_ZOOM)
+}
+
+/** Draws [line] as a green route with a dark casing, or clears it when null. The layers are added once. */
+private fun showRoute(style: Style, line: List<LatLon>?) {
+    val features = if (line != null && line.size >= 2) {
+        listOf(Feature.fromGeometry(LineString.fromLngLats(line.map { Point.fromLngLat(it.longitude, it.latitude) })))
+    } else {
+        emptyList()
+    }
+    val data = FeatureCollection.fromFeatures(features)
+    val source = style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE)
+    if (source != null) {
+        source.setGeoJson(data)
+        return
+    }
+    style.addSource(GeoJsonSource(ROUTE_SOURCE, data))
+    style.addLayer(
+        LineLayer(ROUTE_CASING, ROUTE_SOURCE).withProperties(
+            PropertyFactory.lineColor("#064E3B"),
+            PropertyFactory.lineWidth(9f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
+        )
+    )
+    style.addLayer(
+        LineLayer(ROUTE_LINE, ROUTE_SOURCE).withProperties(
+            PropertyFactory.lineColor("#22C55E"),
+            PropertyFactory.lineWidth(5.5f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
+        )
+    )
 }
 
 /**

@@ -204,4 +204,30 @@ class TripRoutingTest {
         assertTrue(report.complete)
         assertTrue(TripTiles.forCorridor(shape).all(trips.tiles::has))
     }
+
+    @Test
+    fun withFetchOffNothingIsRequestedAndMissingTilesAreCountedAsFailed() {
+        files["/valhalla.json"] = template.toByteArray()
+        val trips = TripRouting(tmp.newFolder("routing"), baseUrl) { FakeRouter { error("no engine without config") } }
+        assertEquals(TripPlan.NoEngine, trips.plan(panaji, porvorim, fetch = false))
+        assertEquals("not even the engine config is fetched", emptyList<String>(), requests.map { it.first })
+    }
+
+    @Test
+    fun withFetchOffAndTheEngineKnownAMissingTileFailsTheRouteAsNeedingData() {
+        files["/valhalla.json"] = template.toByteArray()
+        serve(TripTiles.forPlanning(panaji, porvorim))
+        val root = tmp.newFolder("routing")
+        val noRoute = FakeRouter { throw RoutingException("171: No suitable edges near location") }
+        val trips = TripRouting(root, baseUrl) { noRoute }
+        // First online, so the engine exists; then forget one tile and go offline.
+        assertTrue(trips.plan(panaji, porvorim) is TripPlan.NoRoute)
+        val someTile = TripTiles.forPlanning(panaji, porvorim).first { trips.tiles.has(it) }
+        trips.tiles.file(someTile).delete()
+        requests.clear()
+        val plan = trips.plan(panaji, porvorim, fetch = false)
+        assertTrue(plan is TripPlan.NoRoute)
+        assertEquals(1, (plan as TripPlan.NoRoute).tiles.failed)
+        assertEquals(emptyList<String>(), requests.map { it.first })
+    }
 }

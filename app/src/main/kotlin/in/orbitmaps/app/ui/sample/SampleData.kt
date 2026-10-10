@@ -21,7 +21,10 @@ data class SamplePlace(
     val distanceKm: Double,
     val status: Status,
     val confirmations: Int,
-    val rating: Double?
+    val rating: Double?,
+    /** Made-up position inside the Panaji sample region, so a route can be planned to it. */
+    val lat: Double,
+    val lon: Double
 )
 
 data class SampleReport(@StringRes val title: Int, @StringRes val where: Int, val minutesAgo: Int, val stillThere: Int)
@@ -41,11 +44,26 @@ data class SampleMessage(
 
 object SampleData {
     val places = listOf(
-        SamplePlace("cafe", R.string.sample_place_cafe, R.string.category_food, 0.4, Status.Confirmed, 6, 4.4),
-        SamplePlace("fuel", R.string.sample_place_fuel, R.string.category_fuel, 1.2, Status.Confirmed, 3, null),
-        SamplePlace("ev", R.string.sample_place_ev, R.string.category_ev, 2.1, Status.New, 0, null),
-        SamplePlace("trail", R.string.sample_place_trail, R.string.category_trails, 5.8, Status.Compiled, 0, 4.7),
-        SamplePlace("clinic", R.string.sample_place_clinic, R.string.category_hospital, 1.6, Status.Confirmed, 9, null)
+        SamplePlace(
+            "cafe", R.string.sample_place_cafe, R.string.category_food, 0.4,
+            Status.Confirmed, 6, 4.4, 15.5010, 73.8300
+        ),
+        SamplePlace(
+            "fuel", R.string.sample_place_fuel, R.string.category_fuel, 1.2,
+            Status.Confirmed, 3, null, 15.4850, 73.8180
+        ),
+        SamplePlace(
+            "ev", R.string.sample_place_ev, R.string.category_ev, 2.1,
+            Status.New, 0, null, 15.5130, 73.8400
+        ),
+        SamplePlace(
+            "trail", R.string.sample_place_trail, R.string.category_trails, 5.8,
+            Status.Compiled, 0, 4.7, 15.4550, 73.8050
+        ),
+        SamplePlace(
+            "clinic", R.string.sample_place_clinic, R.string.category_hospital, 1.6,
+            Status.Confirmed, 9, null, 15.4930, 73.8250
+        )
     )
 
     fun place(id: String): SamplePlace = places.firstOrNull { it.id == id } ?: places.first()
