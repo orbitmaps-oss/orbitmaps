@@ -53,6 +53,7 @@ import `in`.orbitmaps.app.location.DeviceLocation
 import `in`.orbitmaps.app.navigation.TripUi
 import `in`.orbitmaps.app.places.PlaceRepository
 import `in`.orbitmaps.app.places.SamplePlaces
+import `in`.orbitmaps.app.regions.RegionsHost
 import `in`.orbitmaps.app.settings.DataSettings
 import `in`.orbitmaps.app.ui.components.MapPlaceholder
 import `in`.orbitmaps.app.ui.components.ThemePreviews
@@ -106,7 +107,8 @@ fun AppShell(
     locationPermitted: Boolean = false,
     onLocationPermissionResult: () -> Unit = {},
     onCenterOnMe: () -> Unit = {},
-    trip: TripUi = TripUi.None
+    trip: TripUi = TripUi.None,
+    regions: RegionsHost = RegionsHost.None
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -210,7 +212,8 @@ fun AppShell(
                     LaunchedEffect(Unit) { update { endNavigation() } }
                 }
             }
-            is Destination.Page -> PageContent(current, state, update, places, data, onDataChange, back, notYet)
+            is Destination.Page ->
+                PageContent(current, state, update, places, data, onDataChange, regions, back, notYet)
         }
 
         SnackbarHost(
@@ -271,6 +274,7 @@ private fun PageContent(
     places: PlaceRepository,
     data: DataSettings,
     onDataChange: (DataSettings.() -> DataSettings) -> Unit,
+    regions: RegionsHost,
     back: () -> Unit,
     notYet: () -> Unit
 ) {
@@ -282,10 +286,10 @@ private fun PageContent(
         Destination.Profile -> ProfilePage(signedIn = state.signedIn, onBack = back, onOpen = { update { open(it) } })
         Destination.Saved -> SavedPage(signedIn = state.signedIn, onBack = back, onOpenPlace = openPlace)
         Destination.OfflineRegions -> OfflineRegionsPage(
+            regions = regions,
             wifiOnly = data.wifiOnlyDownloads,
             onWifiOnlyChange = { value -> onDataChange { copy(wifiOnlyDownloads = value) } },
-            onBack = back,
-            onDownload = notYet
+            onBack = back
         )
         Destination.PrivacySettings -> PrivacySettingsPage(
             streamMap = data.streamMap,

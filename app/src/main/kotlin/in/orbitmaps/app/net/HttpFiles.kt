@@ -171,6 +171,7 @@ object HttpFiles {
                 HttpURLConnection.HTTP_OK -> {
                     target.parentFile?.mkdirs()
                     val size = connection.inputStream.use { input -> partial.outputStream().use { input.copyTo(it) } }
+                    target.delete() // renaming over an existing file fails on some systems
                     if (partial.renameTo(target)) {
                         Download.Saved(size)
                     } else {

@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.places.PlaceItem
+import `in`.orbitmaps.app.regions.InstalledRegion
 import `in`.orbitmaps.app.routing.Costing
 import `in`.orbitmaps.app.routing.RouteSummary
 import `in`.orbitmaps.core.model.LatLon
@@ -34,6 +35,13 @@ class NavigationViewModel(application: Application) : AndroidViewModel(applicati
     @Volatile var fetchAllowed: Boolean = false
 
     private val planner = RoutePlanner(application) { fetchAllowed }
+
+    /** Downloaded regions that routes can be planned inside with no network; set by the activity. */
+    var packs: List<InstalledRegion>
+        get() = planner.packs
+        set(value) {
+            planner.packs = value
+        }
     private var voice: Voice? = null
 
     private val _plan = MutableStateFlow<PlanUi>(PlanUi.Idle)

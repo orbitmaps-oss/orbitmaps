@@ -36,10 +36,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -50,6 +52,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.Attribution
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.regions.RegionProblem
+import `in`.orbitmaps.app.regions.RegionRow
+import `in`.orbitmaps.app.regions.RegionsHost
+import `in`.orbitmaps.app.regions.RegionsUi
+import `in`.orbitmaps.app.regions.RowState
 import `in`.orbitmaps.app.ui.components.Divider
 import `in`.orbitmaps.app.ui.components.ListRow
 import `in`.orbitmaps.app.ui.components.PageScaffold
@@ -60,6 +67,7 @@ import `in`.orbitmaps.app.ui.components.ToggleRow
 import `in`.orbitmaps.app.ui.sample.SampleData
 import `in`.orbitmaps.app.ui.shell.Destination
 import `in`.orbitmaps.app.ui.theme.OrbitTheme
+import kotlin.math.roundToInt
 
 /** Window 15: sign-in status, contributions and links to everything personal. */
 @Composable
@@ -127,15 +135,20 @@ fun SavedPage(signedIn: Boolean, onBack: () -> Unit, onOpenPlace: (String) -> Un
     }
 }
 
-/** Window 17: region sizes, ready or download, and Wi-Fi-only updates. */
+/**
+ * Window 17: the regions that can be downloaded, with their sizes, progress, and a Wi-Fi-only switch.
+ * Downloaded regions work with no network for map, search and routes.
+ */
 @Composable
 fun OfflineRegionsPage(
+    regions: RegionsHost,
     wifiOnly: Boolean,
     onWifiOnlyChange: (Boolean) -> Unit,
     onBack: () -> Unit,
-    onDownload: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val refresh = rememberUpdatedState(regions.onRefresh)
+    LaunchedEffect(Unit) { refresh.value() }
     PageScaffold(title = stringResource(R.string.regions_title), onBack = onBack, modifier = modifier) {
         ToggleRow(
             title = stringResource(R.string.regions_wifi_only),
@@ -144,23 +157,64 @@ fun OfflineRegionsPage(
             onCheckedChange = onWifiOnlyChange
         )
         Divider()
-        SampleData.regions.forEach { region ->
-            ListRow(
-                Icons.Filled.Place,
-                stringResource(region.name),
-                subtitle = stringResource(R.string.regions_size_mb, region.sizeMb),
-                trailing = {
-                    if (region.installed) {
-                        Text(stringResource(R.string.regions_ready), color = MaterialTheme.colorScheme.primary)
-                    } else {
-                        OutlinedButton(onClick = onDownload) { Text(stringResource(R.string.regions_download)) }
-                    }
-                }
-            )
+        val ui = regions.ui
+        if (ui.loading && ui.rows.isEmpty()) {
+            Text(stringResource(R.string.regions_loading), style = MaterialTheme.typography.bodyMedium)
         }
-        SampleDataNote(Modifier.padding(vertical = 8.dp))
+        if (ui.catalogUnavailable) {
+            Text(stringResource(R.string.regions_catalogue_unavailable), style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = regions.onRefresh) { Text(stringResource(R.string.regions_refresh)) }
+        }
+        ui.rows.forEach { row -> RegionRowItem(row, regions) }
     }
 }
+
+@Composable
+private fun RegionRowItem(row: RegionRow, regions: RegionsHost) {
+    val size = if (row.sizeBytes >= BYTES_PER_GB) {
+        stringResource(R.string.regions_size_gb, row.sizeBytes / BYTES_PER_GB.toDouble())
+    } else {
+        stringResource(R.string.regions_size_mb, maxOf(1, (row.sizeBytes / BYTES_PER_MB.toDouble()).roundToInt()))
+    }
+    val subtitle = when (val state = row.state) {
+        RowState.Available -> size
+        is RowState.Downloading -> stringResource(R.string.regions_downloading, state.percent) + " · " + size
+        is RowState.Installed -> stringResource(R.string.regions_built, state.built) + " · " + size
+        is RowState.Failed -> stringResource(
+            when (state.problem) {
+                RegionProblem.Offline -> R.string.regions_problem_offline
+                RegionProblem.NeedsWifi -> R.string.regions_problem_needs_wifi
+                RegionProblem.NoSpace -> R.string.regions_problem_no_space
+                RegionProblem.Unavailable -> R.string.regions_problem_unavailable
+                RegionProblem.Corrupt -> R.string.regions_problem_corrupt
+            }
+        )
+    }
+    ListRow(
+        Icons.Filled.Place,
+        row.name,
+        subtitle = subtitle,
+        trailing = {
+            when (row.state) {
+                RowState.Available -> OutlinedButton(onClick = { regions.onDownload(row.id) }) {
+                    Text(stringResource(R.string.regions_download))
+                }
+                is RowState.Downloading -> OutlinedButton(onClick = { regions.onCancel(row.id) }) {
+                    Text(stringResource(R.string.regions_cancel))
+                }
+                is RowState.Installed -> OutlinedButton(onClick = { regions.onDelete(row.id) }) {
+                    Text(stringResource(R.string.regions_delete))
+                }
+                is RowState.Failed -> OutlinedButton(onClick = { regions.onDownload(row.id) }) {
+                    Text(stringResource(R.string.regions_retry))
+                }
+            }
+        }
+    )
+}
+
+private const val BYTES_PER_MB = 1_000_000L
+private const val BYTES_PER_GB = 1_000_000_000L
 
 /** Switches that are placeholders until their features exist. */
 private val PlannedPrivacySwitches = listOf(
@@ -381,7 +435,14 @@ private fun SavedPagePreview() {
 @ThemePreviews
 @Composable
 private fun OfflineRegionsPagePreview() {
-    OrbitTheme { OfflineRegionsPage(wifiOnly = true, onWifiOnlyChange = {}, onBack = {}, onDownload = {}) }
+    val rows = listOf(
+        RegionRow("goa", "Goa", 5_000_000, RowState.Installed("2026-10-10")),
+        RegionRow("kerala", "Kerala", 1_400_000_000, RowState.Downloading(300_000_000, 1_400_000_000)),
+        RegionRow("karnataka", "Karnataka", 900_000_000, RowState.Available)
+    )
+    OrbitTheme {
+        OfflineRegionsPage(RegionsHost(RegionsUi(rows)), wifiOnly = true, onWifiOnlyChange = {}, onBack = {})
+    }
 }
 
 @ThemePreviews

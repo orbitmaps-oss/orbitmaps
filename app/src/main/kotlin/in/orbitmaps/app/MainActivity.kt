@@ -23,6 +23,8 @@ import `in`.orbitmaps.app.navigation.PlanUi
 import `in`.orbitmaps.app.navigation.TripUi
 import `in`.orbitmaps.app.net.MapMode
 import `in`.orbitmaps.app.places.PlacesViewModel
+import `in`.orbitmaps.app.regions.RegionsHost
+import `in`.orbitmaps.app.regions.RegionsViewModel
 import `in`.orbitmaps.app.settings.EnvironmentViewModel
 import `in`.orbitmaps.app.ui.shell.AppShell
 import `in`.orbitmaps.app.ui.shell.ShellViewModel
@@ -35,6 +37,7 @@ class MainActivity : ComponentActivity() {
     private val placesModel: PlacesViewModel by viewModels()
     private val environment: EnvironmentViewModel by viewModels()
     private val navigation: NavigationViewModel by viewModels()
+    private val regionsModel: RegionsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +84,25 @@ class MainActivity : ComponentActivity() {
                 onUseSampleRoute = navigation::useSampleRoute
             )
             val routeLine = drive?.route?.shape ?: (plan as? PlanUi.Ready)?.route?.shape
+            // Downloads follow the network and the user's Wi-Fi-only switch.
+            LaunchedEffect(network, data.wifiOnlyDownloads) {
+                regionsModel.online = network.online
+                regionsModel.unmetered = network.unmetered
+                regionsModel.wifiOnly = data.wifiOnlyDownloads
+            }
+            val regionsUi by regionsModel.ui.collectAsStateWithLifecycle()
+            val installedRegions by regionsModel.installed.collectAsStateWithLifecycle()
+            LaunchedEffect(installedRegions) {
+                placesModel.places.packs = installedRegions
+                navigation.packs = installedRegions
+            }
+            val regions = RegionsHost(
+                ui = regionsUi,
+                onRefresh = regionsModel::refresh,
+                onDownload = regionsModel::download,
+                onCancel = regionsModel::cancel,
+                onDelete = regionsModel::delete
+            )
             LaunchedEffect(mapMode) { MapLibre.setConnected(mapMode == MapMode.Online) }
             LaunchedEffect(mapMode, network) {
                 placesModel.places.onlineAllowed = mapMode == MapMode.Online
@@ -98,7 +120,8 @@ class MainActivity : ComponentActivity() {
                             location = simulatedLocation ?: location,
                             centerOnMe = centerOnMe,
                             routeLine = routeLine,
-                            follow = drive != null
+                            follow = drive != null,
+                            regions = installedRegions
                         )
                     },
                     places = placesModel.places,
@@ -108,7 +131,8 @@ class MainActivity : ComponentActivity() {
                     locationPermitted = locationPermitted,
                     onLocationPermissionResult = environment::refreshLocationPermission,
                     onCenterOnMe = { centerOnMe++ },
-                    trip = trip
+                    trip = trip,
+                    regions = regions
                 )
             }
         }

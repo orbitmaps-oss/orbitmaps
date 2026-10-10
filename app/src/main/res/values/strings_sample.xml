@@ -16,8 +16,6 @@
     <string name="sample_member_ravi" translatable="false">Ravi V</string>
     <string name="sample_member_meena" translatable="false">Meena N</string>
     <string name="sample_region_panaji" translatable="false">Panaji</string>
-    <string name="sample_region_goa" translatable="false">Goa</string>
-    <string name="sample_region_karnataka" translatable="false">Karnataka</string>
     <string name="sample_message_fuel" translatable="false">Stopping for fuel, 10 minutes.</string>
     <string name="sample_message_wait" translatable="false">Waiting at the viewpoint.</string>
     <string name="sample_message_ok" translatable="false">All OK, right behind you.</string>
