@@ -84,6 +84,15 @@ def docker_command(work_dir: Path, *args: str, uid: int | None = None, gid: int 
     return command + list(args[1:])
 
 
+# valhalla_build_config prints the configuration to standard output instead of writing a file.
+CONFIG_STEP = "valhalla_build_config"
+
+
+def stdout_file(step: list[str], work_dir: Path) -> Path | None:
+    """Where a step's standard output must be saved: the config (printed by CONFIG_STEP) or nowhere."""
+    return work_dir / "valhalla.json" if step[0] == CONFIG_STEP else None
+
+
 def valhalla_steps(extract_name: str) -> list[list[str]]:
     """The Valhalla tool invocations, as argument lists for docker_command."""
     config = f"{CONTAINER_DATA}/valhalla.json"
@@ -173,7 +182,15 @@ def main() -> int:
     uid, gid = (os.getuid(), os.getgid()) if hasattr(os, "getuid") else (None, None)
     for step in valhalla_steps(extract.name):
         print("Running", step[0], "...")
-        subprocess.run(docker_command(WORK_DIR, *step, uid=uid, gid=gid), check=True)
+        command = docker_command(WORK_DIR, *step, uid=uid, gid=gid)
+        target = stdout_file(step, WORK_DIR)
+        if target is None:
+            subprocess.run(command, check=True)
+        else:
+            with target.open("w", encoding="utf-8") as out:
+                subprocess.run(command, check=True, stdout=out)
+            if target.stat().st_size == 0:
+                raise SystemExit(f"{step[0]} printed no configuration")
 
     built = WORK_DIR / "tiles.tar"
     if not built.is_file() or built.stat().st_size == 0:

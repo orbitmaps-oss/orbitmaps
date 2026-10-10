@@ -68,6 +68,13 @@ class BuildSampleRoutingTest(unittest.TestCase):
         self.assertIn(f"{bsr.CONTAINER_DATA}/tiles.tar", steps[0])
         self.assertEqual(f"{bsr.CONTAINER_DATA}/panaji.osm.pbf", steps[1][-1])
 
+    def test_the_config_step_output_is_saved_as_valhalla_json(self):
+        # Regression: valhalla_build_config prints the config; it was never saved and the build failed.
+        steps = bsr.valhalla_steps("panaji.osm.pbf")
+        targets = [bsr.stdout_file(step, self.root) for step in steps]
+        self.assertEqual([self.root / "valhalla.json", None, None], targets)
+        self.assertEqual(f"{bsr.CONTAINER_DATA}/valhalla.json", steps[1][2])
+
     def test_outputs_are_gitignored_and_the_tar_is_bundled_with_debug_assets(self):
         for path in (bsr.TILES_TAR, bsr.CONFIG, bsr.MANIFEST, bsr.WORK_DIR, bsr.EXTRACT):
             self.assertEqual("out", path.relative_to(fsr.REPO_ROOT / "pipeline").parts[0])
