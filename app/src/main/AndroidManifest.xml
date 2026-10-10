@@ -20,6 +20,13 @@
     <!-- MapLibre's library manifest asks for this; the app doesn't need it. -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
 
+    <!-- Spoken directions use the phone's own text-to-speech engine. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

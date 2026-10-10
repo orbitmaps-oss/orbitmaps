@@ -2,7 +2,6 @@
 
 package `in`.orbitmaps.app.ui.sheets
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,27 +31,31 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.navigation.PlanFailure
+import `in`.orbitmaps.app.navigation.PlanUi
+import `in`.orbitmaps.app.navigation.TripUi
 import `in`.orbitmaps.app.places.PlaceItem
 import `in`.orbitmaps.app.places.SamplePlaces
+import `in`.orbitmaps.app.routing.Costing
 import `in`.orbitmaps.app.ui.components.ChipRow
 import `in`.orbitmaps.app.ui.components.ListRow
 import `in`.orbitmaps.app.ui.components.SampleDataNote
 import `in`.orbitmaps.app.ui.components.StatusTag
-import `in`.orbitmaps.app.ui.components.Tag
 import `in`.orbitmaps.app.ui.components.ThemePreviews
 import `in`.orbitmaps.app.ui.theme.OrbitColors
 import `in`.orbitmaps.app.ui.theme.OrbitTheme
@@ -151,78 +156,112 @@ private fun SampleCommunityDetails(place: PlaceItem, onNotYet: () -> Unit) {
     }
 }
 
-private data class RouteOption(
-    @StringRes val label: Int,
-    val minutes: Int,
-    val km: Double,
-    val cameras: Int,
-    val hazards: Int
+/** The travel modes offered in the route preview, with their Valhalla costing. */
+private val TravelModes = listOf(
+    R.string.mode_car to Costing.Car,
+    R.string.mode_bike to Costing.Bike,
+    R.string.mode_walk to Costing.Walk
 )
 
-private val SampleRoutes = listOf(
-    RouteOption(R.string.route_fastest, 18, 7.2, cameras = 1, hazards = 2),
-    RouteOption(R.string.route_shortest, 22, 6.4, cameras = 0, hazards = 1)
-)
-
-/** Window 6: travel mode, route options with the alerts on each, and Start. */
+/**
+ * Window 6: travel mode and the route calculated on the phone, with Start. While planning it shows
+ * progress; if no route can be found it says why. Debug builds also offer a simulated drive.
+ */
 @Composable
 fun RoutePreviewSheet(
     placeId: String,
     loadPlace: suspend (String) -> PlaceItem?,
-    onStart: () -> Unit,
+    trip: TripUi,
+    onStart: (simulate: Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val place = rememberPlace(placeId, loadPlace) ?: return
-    val modes = listOf(R.string.mode_car, R.string.mode_bike, R.string.mode_walk)
-    var mode by remember { mutableIntStateOf(0) }
-    var route by remember { mutableIntStateOf(0) }
+    var mode by rememberSaveable { mutableIntStateOf(0) }
+    val currentTrip = rememberUpdatedState(trip)
+    LaunchedEffect(place.id, mode) { currentTrip.value.onPlan(place, TravelModes[mode].second) }
+    DisposableEffect(Unit) { onDispose { currentTrip.value.onClearPlan() } }
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            stringResource(R.string.route_to, place.name),
-            style = MaterialTheme.typography.titleLarge
-        )
+        Text(stringResource(R.string.route_to, place.name), style = MaterialTheme.typography.titleLarge)
         ChipRow {
-            modes.forEachIndexed { index, label ->
+            TravelModes.forEachIndexed { index, (label, _) ->
                 FilterChip(selected = index == mode, onClick = {
                     mode = index
                 }, label = { Text(stringResource(label)) })
             }
         }
-        SampleRoutes.forEachIndexed { index, option ->
-            val chosen = index == route
-            Card(
-                onClick = { route = index },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).semantics { selected = chosen },
-                border = if (chosen) BorderStroke(2.dp, OrbitColors.RouteGreen) else null
+        when (val plan = trip.plan) {
+            PlanUi.Idle, PlanUi.Planning -> Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.heightIn(min = 56.dp)
             ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        stringResource(R.string.route_summary, stringResource(option.label), option.minutes, option.km),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (option.cameras > 0) {
-                            Tag(
-                                pluralStringResource(R.plurals.route_alert_cameras, option.cameras, option.cameras),
-                                OrbitColors.SpeedRed
-                            )
-                        }
-                        if (option.hazards > 0) {
-                            Tag(
-                                pluralStringResource(R.plurals.route_alert_hazards, option.hazards, option.hazards),
-                                OrbitColors.Amber
-                            )
-                        }
-                    }
-                }
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 3.dp)
+                Text(stringResource(R.string.route_finding), style = MaterialTheme.typography.bodyLarge)
+            }
+            is PlanUi.Ready -> ReadyRoute(plan, trip, onStart)
+            is PlanUi.Failed -> FailedRoute(plan.reason, trip)
+        }
+        if (place.isSample) SampleDataNote()
+    }
+}
+
+@Composable
+private fun ReadyRoute(plan: PlanUi.Ready, trip: TripUi, onStart: (Boolean) -> Unit) {
+    Card(
+        border = BorderStroke(2.dp, OrbitColors.RouteGreen),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                stringResource(
+                    R.string.route_summary_short,
+                    kotlin.math.ceil(plan.route.timeSeconds / 60.0).toInt(),
+                    plan.route.lengthM / 1000.0
+                ),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                stringResource(if (plan.fromRegion) R.string.route_on_phone_offline else R.string.route_on_phone),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (plan.tilesIncomplete) {
+                Text(
+                    stringResource(R.string.route_data_incomplete),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Icon(Icons.Filled.Check, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.action_start))
+    }
+    Button(onClick = { onStart(false) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        Icon(Icons.Filled.Check, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.action_start))
+    }
+    if (trip.debugTools) {
+        OutlinedButton(onClick = { onStart(true) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text(stringResource(R.string.route_simulate))
         }
-        SampleDataNote()
+    }
+}
+
+@Composable
+private fun FailedRoute(reason: PlanFailure, trip: TripUi) {
+    Text(
+        stringResource(
+            when (reason) {
+                PlanFailure.NeedsData -> R.string.route_needs_data
+                PlanFailure.NoRoute -> R.string.route_none
+                PlanFailure.NoDestination -> R.string.route_no_destination
+            }
+        ),
+        style = MaterialTheme.typography.bodyLarge
+    )
+    if (trip.debugTools) {
+        OutlinedButton(onClick = trip.onUseSampleRoute, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text(stringResource(R.string.route_use_sample))
+        }
     }
 }
 
@@ -242,6 +281,8 @@ private fun PlaceDetailsPreview() {
 private fun RoutePreviewPreview() {
     val samples = SamplePlaces(LocalResources.current::getString)
     OrbitTheme {
-        Surface { RoutePreviewSheet("cafe", samples::place, onStart = {}, modifier = Modifier.padding(16.dp)) }
+        Surface {
+            RoutePreviewSheet("cafe", samples::place, TripUi.None, onStart = {}, modifier = Modifier.padding(16.dp))
+        }
     }
 }

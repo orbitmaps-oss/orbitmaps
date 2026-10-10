@@ -31,7 +31,4 @@
     <string name="sample_tag_wheelchair" translatable="false">Wheelchair access</string>
     <string name="sample_trip" translatable="false">Coast ride</string>
     <string name="sample_trip_detail" translatable="false">3 stops · 64 km</string>
-    <string name="sample_turn_instruction" translatable="false">Turn right onto Riverside road</string>
-    <string name="sample_alert_camera" translatable="false">Speed camera in 400 m</string>
-    <string name="sample_arrival" translatable="false">Arrive 10:42</string>
 </resources>

@@ -109,24 +109,10 @@
     <string name="mode_car">Car</string>
     <string name="mode_bike">Bike</string>
     <string name="mode_walk">Walk</string>
-    <string name="route_fastest">Fastest</string>
-    <string name="route_shortest">Shortest</string>
-    <!-- %1$s is the route name, %2$d minutes, %3$.1f kilometres -->
-    <string name="route_summary">%1$s · %2$d min · %3$.1f km</string>
-    <plurals name="route_alert_cameras">
-        <item quantity="one">%d speed camera</item>
-        <item quantity="other">%d speed cameras</item>
-    </plurals>
-    <plurals name="route_alert_hazards">
-        <item quantity="one">%d hazard</item>
-        <item quantity="other">%d hazards</item>
-    </plurals>
 
     <!-- Glance mode (windows 7 to 9) -->
     <string name="glance_distance_m">%1$d m</string>
     <string name="glance_speed_kmh">%1$d km/h</string>
-    <!-- Read by TalkBack: %1$d is the current speed, %2$d the speed limit -->
-    <string name="glance_speed_description">Speed %1$d km/h, limit %2$d km/h</string>
     <!-- %1$d minutes, %2$.1f kilometres -->
     <string name="glance_eta">%1$d min · %2$.1f km</string>
     <string name="glance_more">More</string>
@@ -266,4 +252,33 @@
     <string name="account_delete">Delete account</string>
     <string name="account_delete_hint">Deletes the account, sessions and synced data at once</string>
     <string name="account_contributions_separate">Contributions stay anonymous and separate from this account</string>
+
+    <!-- Route preview and navigation -->
+    <string name="route_finding">Finding the route…</string>
+    <!-- %1$d minutes, %2$.1f kilometres -->
+    <string name="route_summary_short">%1$d min · %2$.1f km</string>
+    <string name="route_on_phone">Calculated on your phone</string>
+    <string name="route_on_phone_offline">Calculated on your phone, no network needed</string>
+    <string name="route_data_incomplete">Some map data couldn\'t be downloaded, so a better route may exist.</string>
+    <string name="route_needs_data">This route needs map data that isn\'t on your phone yet. Connect to the internet, or download the region first.</string>
+    <string name="route_none">No route found between these places.</string>
+    <string name="route_no_destination">This place has no position to route to.</string>
+    <string name="route_simulate" translatable="false">Simulate drive (debug)</string>
+    <string name="route_use_sample" translatable="false">Use the sample route (debug)</string>
+    <string name="glance_distance_km">%1$.1f km</string>
+    <string name="glance_speed_now_description">Speed %1$d km/h</string>
+    <!-- %1$s is the arrival time, e.g. 10:42 -->
+    <string name="glance_arrive_at">Arrive %1$s</string>
+    <string name="nav_arrived">You have arrived</string>
+    <string name="nav_status_waiting">Waiting for GPS…</string>
+    <string name="nav_status_rerouting">Rerouting…</string>
+    <string name="nav_status_off_route">Off the route. Looking for a way back…</string>
+    <string name="nav_status_simulated" translatable="false">Simulated drive</string>
+    <!-- Spoken: %1$s is a distance such as "400 metres", %2$s the instruction, e.g. "Turn right onto MG Road." -->
+    <string name="nav_alert_in">In %1$s, %2$s</string>
+    <string name="distance_km_spoken">%1$.1f kilometres</string>
+    <plurals name="distance_metres_spoken">
+        <item quantity="one">%d metre</item>
+        <item quantity="other">%d metres</item>
+    </plurals>
 </resources>

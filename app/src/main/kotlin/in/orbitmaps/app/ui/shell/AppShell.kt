@@ -35,6 +35,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.location.DeviceLocation
+import `in`.orbitmaps.app.navigation.TripUi
 import `in`.orbitmaps.app.places.PlaceRepository
 import `in`.orbitmaps.app.places.SamplePlaces
 import `in`.orbitmaps.app.settings.DataSettings
@@ -103,7 +105,8 @@ fun AppShell(
     onDataChange: (DataSettings.() -> DataSettings) -> Unit = {},
     locationPermitted: Boolean = false,
     onLocationPermissionResult: () -> Unit = {},
-    onCenterOnMe: () -> Unit = {}
+    onCenterOnMe: () -> Unit = {},
+    trip: TripUi = TripUi.None
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -119,7 +122,11 @@ fun AppShell(
     }
     val notYetMessage = stringResource(R.string.not_available_yet)
     val notYet: () -> Unit = { scope.launch { snackbar.showSnackbar(notYetMessage) } }
-    val back: () -> Unit = { update { back() ?: this } }
+    val back: () -> Unit = {
+        // Backing out of glance mode (with its actions closed) ends the trip, and so does End.
+        if (state.current == Destination.Driving && !state.drivingActionsOpen) trip.onEnd()
+        update { back() ?: this }
+    }
 
     BackHandler(enabled = state.back() != null, onBack = back)
 
@@ -180,17 +187,27 @@ fun AppShell(
                             }
                         }
                     }
-                    SheetContent(current, state, update, places, notYet)
+                    SheetContent(current, state, update, places, trip, notYet)
                 }
             }
             Destination.Driving -> {
-                OrbitTheme(darkTheme = state.mapTheme == MapTheme.Night || isSystemInDarkTheme()) {
-                    GlanceMode(
-                        actionsOpen = state.drivingActionsOpen,
-                        onToggleActions = { update { toggleDrivingActions() } },
-                        onEnd = { update { endNavigation() } },
-                        onNotYet = notYet
-                    )
+                val drive = trip.drive
+                if (drive != null) {
+                    OrbitTheme(darkTheme = state.mapTheme == MapTheme.Night || isSystemInDarkTheme()) {
+                        GlanceMode(
+                            drive = drive,
+                            actionsOpen = state.drivingActionsOpen,
+                            onToggleActions = { update { toggleDrivingActions() } },
+                            onEnd = {
+                                trip.onEnd()
+                                update { endNavigation() }
+                            },
+                            onNotYet = notYet
+                        )
+                    }
+                } else {
+                    // The trip ended or never started (e.g. the app was restored): back to the map.
+                    LaunchedEffect(Unit) { update { endNavigation() } }
                 }
             }
             is Destination.Page -> PageContent(current, state, update, places, data, onDataChange, back, notYet)
@@ -209,6 +226,7 @@ private fun SheetContent(
     state: AppState,
     update: (AppState.() -> AppState) -> Unit,
     places: PlaceRepository,
+    trip: TripUi,
     notYet: () -> Unit
 ) {
     when (current) {
@@ -227,7 +245,11 @@ private fun SheetContent(
         is Destination.RoutePreview -> RoutePreviewSheet(
             placeId = current.placeId,
             loadPlace = places::place,
-            onStart = { update { startNavigation() } }
+            trip = trip,
+            onStart = { simulate ->
+                trip.onStart(simulate)
+                update { startNavigation() }
+            }
         )
         Destination.Contribute -> ContributeSheet(onAddPlace = {
             update { open(Destination.AddPlace) }

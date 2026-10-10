@@ -15,7 +15,9 @@ data class DriveUi(
     /** A reroute was needed but no new route could be found (offline without tiles, no road nearby). */
     val rerouteFailed: Boolean = false,
     val fix: Fix? = null,
-    val simulated: Boolean = false
+    val simulated: Boolean = false,
+    /** The latest on-route state, so the screen still has a step and a time left while off route. */
+    val lastOnRoute: NavState.OnRoute? = null
 )
 
 /**
@@ -48,7 +50,7 @@ class DriveController(
         when (val nav = navigator.update(fix)) {
             is NavState.OnRoute -> {
                 announcer.next(route, nav)?.let(speak)
-                _state.value = DriveUi(route, nav, fix = fix, simulated = simulated)
+                _state.value = DriveUi(route, nav, fix = fix, simulated = simulated, lastOnRoute = nav)
             }
             NavState.Arrived -> {
                 if (!arrivalSpoken) {
@@ -56,7 +58,13 @@ class DriveController(
                     route.maneuvers.last().let { it.verbalPre ?: it.instruction.takeIf(String::isNotBlank) }
                         ?.let { speak(Announcement(Announcer.Kind.Pre, it, 0.0)) }
                 }
-                _state.value = DriveUi(route, NavState.Arrived, fix = fix, simulated = simulated)
+                _state.value = DriveUi(
+                    route,
+                    NavState.Arrived,
+                    fix = fix,
+                    simulated = simulated,
+                    lastOnRoute = _state.value.lastOnRoute
+                )
             }
             is NavState.OffRoute -> reroute(nav, fix)
         }

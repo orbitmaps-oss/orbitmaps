@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<resources>
+    <!-- Debug builds turn this on (app/src/debug/res/values/bools.xml): simulated drives, sample route. -->
+    <bool name="debug_tools">false</bool>
+</resources>

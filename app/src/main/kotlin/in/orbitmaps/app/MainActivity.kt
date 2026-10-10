@@ -15,7 +15,12 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.location.toLatLon
 import `in`.orbitmaps.app.map.MapScreen
+import `in`.orbitmaps.app.navigation.NavigationViewModel
+import `in`.orbitmaps.app.navigation.PlanUi
+import `in`.orbitmaps.app.navigation.TripUi
 import `in`.orbitmaps.app.net.MapMode
 import `in`.orbitmaps.app.places.PlacesViewModel
 import `in`.orbitmaps.app.settings.EnvironmentViewModel
@@ -29,6 +34,7 @@ class MainActivity : ComponentActivity() {
     private val shell: ShellViewModel by viewModels()
     private val placesModel: PlacesViewModel by viewModels()
     private val environment: EnvironmentViewModel by viewModels()
+    private val navigation: NavigationViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,6 +57,30 @@ class MainActivity : ComponentActivity() {
             val locationPermitted by environment.locationPermitted.collectAsStateWithLifecycle()
             val location by environment.location.collectAsStateWithLifecycle()
             var centerOnMe by remember { mutableIntStateOf(0) }
+            val plan by navigation.plan.collectAsStateWithLifecycle()
+            val drive by navigation.drive.collectAsStateWithLifecycle()
+            val simulatedLocation by navigation.simulatedLocation.collectAsStateWithLifecycle()
+            val debugTools = remember { resources.getBoolean(R.bool.debug_tools) }
+            // On-demand map data may be fetched only while the user allows it and the phone is online.
+            LaunchedEffect(data.streamMap, network.online) {
+                navigation.fetchAllowed = data.streamMap && network.online
+            }
+            // Real GPS fixes drive a real trip (a simulated one makes its own).
+            LaunchedEffect(location) { location?.let(navigation::onLocation) }
+            val trip = TripUi(
+                plan = plan,
+                drive = drive,
+                debugTools = debugTools,
+                onPlan = { place, costing ->
+                    // From where the user is, or from the map centre when location is off.
+                    navigation.plan(location?.toLatLon() ?: placesModel.places.center, place, costing)
+                },
+                onClearPlan = navigation::clearPlan,
+                onStart = navigation::start,
+                onEnd = navigation::end,
+                onUseSampleRoute = navigation::useSampleRoute
+            )
+            val routeLine = drive?.route?.shape ?: (plan as? PlanUi.Ready)?.route?.shape
             LaunchedEffect(mapMode) { MapLibre.setConnected(mapMode == MapMode.Online) }
             LaunchedEffect(mapMode, network) {
                 placesModel.places.onlineAllowed = mapMode == MapMode.Online
@@ -65,8 +95,10 @@ class MainActivity : ComponentActivity() {
                             bottomInset = bottomInset,
                             mode = mapMode,
                             onCenterChange = { placesModel.places.center = it },
-                            location = location,
-                            centerOnMe = centerOnMe
+                            location = simulatedLocation ?: location,
+                            centerOnMe = centerOnMe,
+                            routeLine = routeLine,
+                            follow = drive != null
                         )
                     },
                     places = placesModel.places,
@@ -75,7 +107,8 @@ class MainActivity : ComponentActivity() {
                     onDataChange = environment::update,
                     locationPermitted = locationPermitted,
                     onLocationPermissionResult = environment::refreshLocationPermission,
-                    onCenterOnMe = { centerOnMe++ }
+                    onCenterOnMe = { centerOnMe++ },
+                    trip = trip
                 )
             }
         }
