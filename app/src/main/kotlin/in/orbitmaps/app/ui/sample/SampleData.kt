@@ -31,8 +31,6 @@ data class SampleReport(@StringRes val title: Int, @StringRes val where: Int, va
 
 data class SampleMember(@StringRes val name: Int, val distanceKm: Double, val minutesAgo: Int)
 
-data class SampleRegion(@StringRes val name: Int, val sizeMb: Int, val installed: Boolean)
-
 enum class Delivery { Sent, Relayed, Acknowledged }
 
 data class SampleMessage(
@@ -78,12 +76,6 @@ object SampleData {
         SampleMember(R.string.sample_member_asha, 0.0, 1),
         SampleMember(R.string.sample_member_ravi, 1.2, 4),
         SampleMember(R.string.sample_member_meena, 3.5, 9)
-    )
-
-    val regions = listOf(
-        SampleRegion(R.string.sample_region_panaji, 12, installed = true),
-        SampleRegion(R.string.sample_region_goa, 180, installed = false),
-        SampleRegion(R.string.sample_region_karnataka, 920, installed = false)
     )
 
     val messages = listOf(

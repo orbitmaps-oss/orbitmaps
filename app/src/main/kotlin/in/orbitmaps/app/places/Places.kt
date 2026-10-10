@@ -7,6 +7,8 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.sqlite.SQLiteException
 import `in`.orbitmaps.app.map.SampleRegion
+import `in`.orbitmaps.app.regions.InstalledRegion
+import `in`.orbitmaps.app.regions.PackRole
 import `in`.orbitmaps.app.search.CategoryGroup
 import `in`.orbitmaps.app.search.IndexedPlace
 import `in`.orbitmaps.app.search.OfflineSearch
@@ -63,25 +65,39 @@ enum class PlaceSource(val prefix: String) {
     World("world:"),
 
     /** An area search shard, fetched on demand and cached. */
-    Area("area:")
+    Area("area:"),
+
+    /** A downloaded region pack's search index; ids are `pack:<region id>:<row>`. */
+    Pack("pack:")
 }
 
-/** A parsed place id: the index, the row in it, and for [PlaceSource.Area] the shard's cell. */
-data class PlaceRef(val source: PlaceSource, val rowId: Long, val cell: Int? = null)
+/**
+ * A parsed place id: the index, the row in it, for [PlaceSource.Area] the shard's cell, and for
+ * [PlaceSource.Pack] the region's id.
+ */
+data class PlaceRef(val source: PlaceSource, val rowId: Long, val cell: Int? = null, val packId: String? = null)
 
 /** Ids of places from the indexes, as used in [in.orbitmaps.app.ui.shell.Destination]. */
 object PlaceIds {
     fun forIndex(rowId: Long, source: PlaceSource = PlaceSource.Region): String {
         require(source != PlaceSource.Area) { "area ids need a cell: use forArea" }
+        require(source != PlaceSource.Pack) { "pack ids need a region: use forPack" }
         return "${source.prefix}$rowId"
     }
 
     fun forArea(cell: Int, rowId: Long) = "${PlaceSource.Area.prefix}$cell:$rowId"
 
+    fun forPack(packId: String, rowId: Long) = "${PlaceSource.Pack.prefix}$packId:$rowId"
+
     /** The index and row, or null for sample ids and malformed ids. */
     fun parse(id: String): PlaceRef? {
         val source = PlaceSource.entries.firstOrNull { id.startsWith(it.prefix) } ?: return null
         val rest = id.removePrefix(source.prefix)
+        if (source == PlaceSource.Pack) {
+            val packId = rest.substringBefore(':', "").ifEmpty { return null }
+            val rowId = rest.substringAfter(':', "").toLongOrNull() ?: return null
+            return PlaceRef(source, rowId, packId = packId)
+        }
         if (source != PlaceSource.Area) return rest.toLongOrNull()?.let { PlaceRef(source, it) }
         val cell = rest.substringBefore(':', "").toIntOrNull() ?: return null
         val rowId = rest.substringAfter(':', "").toLongOrNull() ?: return null
@@ -92,30 +108,37 @@ object PlaceIds {
 /** A world result this close to another result with the same name is the same place. */
 private const val SAME_PLACE_KM = 10.0
 
-/** One merged result: where it came from, the hit, and the shard cell for area results. */
-data class MergedHit(val source: PlaceSource, val hit: SearchHit, val cell: Int? = null) {
-    val id: String get() = if (cell !=
-        null
-    ) {
-        PlaceIds.forArea(cell, hit.place.id)
-    } else {
-        PlaceIds.forIndex(hit.place.id, source)
-    }
+/** A hit from the search index of the downloaded region [packId]. */
+data class PackHit(val packId: String, val hit: SearchHit)
+
+/** One merged result: where it came from, the hit, the shard cell for area results, the region for packs. */
+data class MergedHit(val source: PlaceSource, val hit: SearchHit, val cell: Int? = null, val packId: String? = null) {
+    val id: String
+        get() = when {
+            cell != null -> PlaceIds.forArea(cell, hit.place.id)
+            packId != null -> PlaceIds.forPack(packId, hit.place.id)
+            else -> PlaceIds.forIndex(hit.place.id, source)
+        }
 }
 
 /**
- * Merges region, area-shard and world results: area results that the downloaded region also has
+ * Merges region, pack, area-shard and world results: area results that a downloaded region also has
  * (same OSM object) are dropped, and so are world places another result already names nearby. Keeps
- * the best [limit] by score; on a tie, region before area before world.
+ * the best [limit] by score; on a tie, region before pack before area before world.
  */
 internal fun mergeResults(
     region: List<SearchHit>,
     world: List<SearchHit>,
     limit: Int,
-    area: List<ShardHit> = emptyList()
+    area: List<ShardHit> = emptyList(),
+    packs: List<PackHit> = emptyList()
 ): List<MergedHit> {
-    val regionOsm = region.map { it.place.osm }.toSet()
+    // Overlapping regions can hold the same OSM object; the first one listed wins.
+    val seenPackOsm = mutableSetOf<String>()
+    val packHits = packs.filter { seenPackOsm.add(it.hit.place.osm) }
+    val regionOsm = region.map { it.place.osm }.toSet() + seenPackOsm
     val local = region.map { MergedHit(PlaceSource.Region, it) } +
+        packHits.map { MergedHit(PlaceSource.Pack, it.hit, packId = it.packId) } +
         area.filterNot { it.hit.place.osm in regionOsm }.map { MergedHit(PlaceSource.Area, it.hit, it.cell) }
     val distinctWorld = world.filterNot { w ->
         local.any { r ->
@@ -176,6 +199,10 @@ class AppPlaces(private val application: Application) :
     private val mutex = Mutex()
     private var opened = false
     private val indexes = mutableMapOf<PlaceSource, OfflineSearch>()
+    private val packIndexes = mutableMapOf<String, OfflineSearch>()
+
+    /** The downloaded regions, from the Offline regions page; their search indexes are opened on demand. */
+    @Volatile var packs: List<InstalledRegion> = emptyList()
 
     private suspend fun indexes(): Map<PlaceSource, OfflineSearch> = mutex.withLock {
         if (!opened) {
@@ -184,6 +211,17 @@ class AppPlaces(private val application: Application) :
             installWorldPlaces(application)?.let { open(it) }?.let { indexes[PlaceSource.World] = it }
         }
         indexes
+    }
+
+    /** Opens the search index of each installed pack and closes the ones that were deleted. */
+    private suspend fun packIndexes(): Map<String, OfflineSearch> = mutex.withLock {
+        val current = packs.filter { it.hasFile(PackRole.Search) }
+        val ids = current.map { it.id }.toSet()
+        packIndexes.keys.filterNot { it in ids }.forEach { packIndexes.remove(it)?.close() }
+        current.filter { it.id !in packIndexes }.forEach { pack ->
+            open(pack.file(PackRole.Search))?.let { packIndexes[pack.id] = it }
+        }
+        packIndexes.toMap()
     }
 
     private suspend fun open(file: File): OfflineSearch? = withContext(Dispatchers.IO) {
@@ -200,8 +238,9 @@ class AppPlaces(private val application: Application) :
 
     override suspend fun search(text: String, group: CategoryGroup?): SearchResults {
         val indexes = indexes()
+        val packIndexes = packIndexes()
         if (text.isBlank() && group == null) {
-            return if (indexes.isEmpty()) {
+            return if (indexes.isEmpty() && packIndexes.isEmpty()) {
                 sample.search(
                     text,
                     group
@@ -213,12 +252,15 @@ class AppPlaces(private val application: Application) :
         val from = center
         val merged = withContext(Dispatchers.IO) {
             val region = indexes[PlaceSource.Region]?.search(text, from, group).orEmpty()
+            val packHits = packIndexes.entries.sortedBy { it.key }.flatMap { (id, index) ->
+                index.search(text, from, group).map { PackHit(id, it) }
+            }
             val area = shards.search(text, from, group, fetch = onlineAllowed, neighbours = unmetered)
             // The world index only has cities and towns, so it can't answer category searches.
             val world = if (group == null) indexes[PlaceSource.World]?.search(text, from).orEmpty() else emptyList()
-            mergeResults(region, world, OfflineSearch.DEFAULT_LIMIT, area)
+            mergeResults(region, world, OfflineSearch.DEFAULT_LIMIT, area, packHits)
         }
-        if (indexes.isEmpty() && merged.isEmpty()) return sample.search(text, group)
+        if (indexes.isEmpty() && packIndexes.isEmpty() && merged.isEmpty()) return sample.search(text, group)
         return SearchResults(merged.map { item(it.id, it.hit.place, it.hit.distanceKm) }, fromOfflineIndex = true)
     }
 
@@ -227,6 +269,8 @@ class AppPlaces(private val application: Application) :
         val place = withContext(Dispatchers.IO) {
             if (ref.source == PlaceSource.Area) {
                 shards.place(checkNotNull(ref.cell), ref.rowId)
+            } else if (ref.source == PlaceSource.Pack) {
+                packIndexes()[ref.packId]?.place(ref.rowId)
             } else {
                 indexes()[ref.source]?.place(ref.rowId)
             }
@@ -246,6 +290,8 @@ class AppPlaces(private val application: Application) :
     override fun close() {
         indexes.values.forEach { it.close() }
         indexes.clear()
+        packIndexes.values.forEach { it.close() }
+        packIndexes.clear()
         shards.close()
     }
 }

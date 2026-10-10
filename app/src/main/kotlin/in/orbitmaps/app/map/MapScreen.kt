@@ -44,6 +44,10 @@ import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.location.DeviceLocation
 import `in`.orbitmaps.app.net.MapMode
 import `in`.orbitmaps.app.net.OnlineData
+import `in`.orbitmaps.app.regions.InstalledRegion
+import `in`.orbitmaps.app.regions.PackRole
+import `in`.orbitmaps.app.regions.RegionBounds
+import `in`.orbitmaps.app.regions.RegionPicker
 import `in`.orbitmaps.core.model.LatLon
 import java.io.IOException
 import kotlin.math.abs
@@ -76,8 +80,8 @@ internal val ATTRIBUTION_TEXT = R.string.osm_attribution
 private sealed interface MapState {
     data object Loading : MapState
 
-    /** [limitToRegion]: keep the camera inside the installed region (offline mode). */
-    data class Ready(val styleJson: String, val limitToRegion: Boolean) : MapState
+    /** [limitTo]: keep the camera inside this region (offline mode); null for the streamed world map. */
+    data class Ready(val styleJson: String, val limitTo: RegionBounds?) : MapState
 
     data object RegionMissing : MapState
 
@@ -85,9 +89,10 @@ private sealed interface MapState {
 }
 
 /**
- * Full-screen map: our streamed world tiles in [MapMode.Online], otherwise the installed region
- * ([SampleRegion] for now) fully offline.
+ * Full-screen map: our streamed world tiles in [MapMode.Online], otherwise a downloaded region
+ * ([regions], or the bundled sample region in debug builds) fully offline.
  *
+ * @param regions the downloaded regions; offline, the one containing the map centre is shown.
  * @param bottomInset extra space below the attribution, for a bottom sheet drawn over the map.
  * @param onCenterChange called with the map centre when the camera stops moving (stays on the phone).
  * @param location the user's position for the blue dot, or null (no permission or no fix yet).
@@ -104,7 +109,8 @@ fun MapScreen(
     location: Location? = null,
     centerOnMe: Int = 0,
     routeLine: List<LatLon>? = null,
-    follow: Boolean = false
+    follow: Boolean = false,
+    regions: List<InstalledRegion> = emptyList()
 ) {
     val context = LocalContext.current.applicationContext
     val bottomInsetPx = with(LocalDensity.current) { bottomInset.roundToPx() }
@@ -112,10 +118,16 @@ fun MapScreen(
     // If our server can't be reached, fall back to downloaded data for the rest of the session.
     var streamingFailed by remember { mutableStateOf(false) }
     val effectiveMode = if (streamingFailed) MapMode.Offline else mode
-    LaunchedEffect(effectiveMode) {
+    // The downloaded region shown offline: it follows the map centre but stays put while it contains it.
+    var centre by remember { mutableStateOf<LatLon?>(null) }
+    var shownRegionId by remember { mutableStateOf<String?>(null) }
+    val region = RegionPicker.forMap(regions, centre, shownRegionId)
+    shownRegionId = region?.id
+    val offlineKey = if (effectiveMode == MapMode.Offline) region?.id to region?.manifest?.built else null
+    LaunchedEffect(effectiveMode, offlineKey) {
         state = when (effectiveMode) {
             MapMode.Online -> loadStreamingStyle(context)
-            MapMode.Offline -> loadOfflineStyle(context)
+            MapMode.Offline -> if (region != null) loadPackStyle(context, region) else loadOfflineStyle(context)
         }
     }
 
@@ -123,15 +135,18 @@ fun MapScreen(
         when (val current = state) {
             is MapState.Ready -> OfflineMap(
                 current.styleJson,
-                current.limitToRegion,
+                current.limitTo,
                 location = location,
                 centerOnMe = centerOnMe,
                 routeLine = routeLine,
                 follow = follow,
                 bottomInsetPx = bottomInsetPx,
-                onCenterChange = onCenterChange,
+                onCenterChange = {
+                    centre = it
+                    onCenterChange(it)
+                },
                 onLoadFailed = {
-                    if (current.limitToRegion) state = MapState.Failed else streamingFailed = true
+                    if (current.limitTo != null) state = MapState.Failed else streamingFailed = true
                 }
             )
             MapState.RegionMissing -> CenteredMessage(R.string.map_region_missing)
@@ -151,7 +166,7 @@ private suspend fun loadOfflineStyle(context: Context): MapState = when (val ins
     is InstallResult.Installed -> withContext(Dispatchers.IO) {
         try {
             val template = context.assets.open(OfflineStyle.ASSET_PATH).bufferedReader().use { it.readText() }
-            MapState.Ready(OfflineStyle.offlineStyleJson(template, installed.file), limitToRegion = true)
+            MapState.Ready(OfflineStyle.offlineStyleJson(template, installed.file), limitTo = SampleRegion.bounds)
         } catch (e: IOException) {
             MapState.Failed
         } catch (e: IllegalArgumentException) {
@@ -162,10 +177,22 @@ private suspend fun loadOfflineStyle(context: Context): MapState = when (val ins
     InstallResult.Invalid, InstallResult.Failed -> MapState.Failed
 }
 
+private suspend fun loadPackStyle(context: Context, region: InstalledRegion): MapState = withContext(Dispatchers.IO) {
+    try {
+        val template = context.assets.open(OfflineStyle.ASSET_PATH).bufferedReader().use { it.readText() }
+        val file = region.file(PackRole.Map)
+        MapState.Ready(OfflineStyle.offlineStyleJson(template, file), limitTo = region.manifest.bounds)
+    } catch (e: IOException) {
+        MapState.Failed
+    } catch (e: IllegalArgumentException) {
+        MapState.Failed
+    }
+}
+
 private suspend fun loadStreamingStyle(context: Context): MapState = withContext(Dispatchers.IO) {
     try {
         val template = context.assets.open(OfflineStyle.ASSET_PATH).bufferedReader().use { it.readText() }
-        MapState.Ready(OfflineStyle.streamingStyleJson(template, OnlineData.WORLD_TILES_URL), limitToRegion = false)
+        MapState.Ready(OfflineStyle.streamingStyleJson(template, OnlineData.WORLD_TILES_URL), limitTo = null)
     } catch (e: IOException) {
         MapState.Failed
     } catch (e: IllegalArgumentException) {
@@ -176,7 +203,7 @@ private suspend fun loadStreamingStyle(context: Context): MapState = withContext
 @Composable
 private fun OfflineMap(
     styleJson: String,
-    limitToRegion: Boolean,
+    limitTo: RegionBounds?,
     location: Location?,
     centerOnMe: Int,
     routeLine: List<LatLon>?,
@@ -222,9 +249,16 @@ private fun OfflineMap(
 
     // Switching between online and offline keeps the same MapView and camera; only the style and
     // the region limits change.
-    LaunchedEffect(mapView, styleJson, limitToRegion) {
+    LaunchedEffect(mapView, styleJson, limitTo) {
         mapView.getMapAsync { map ->
-            limiter.enabled = limitToRegion
+            val target = map.cameraPosition.target
+            val inside = target != null &&
+                LatLon.orNull(target.latitude, target.longitude)?.let { limitTo?.contains(it) } == true
+            if (limitTo != null && !inside) {
+                // A downloaded region elsewhere: start from its middle instead of being clamped to its edge.
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(limitTo.center.toLatLng(), SampleRegion.INITIAL_ZOOM))
+            }
+            limiter.bounds = limitTo
             map.setStyle(Style.Builder().fromJson(styleJson)) { style ->
                 showLocation(context, map, style, hasLocation.value)
                 showRoute(style, currentLine.value)
@@ -376,9 +410,9 @@ private fun showRoute(style: Style, line: List<LatLon>?) {
 }
 
 /**
- * Applies [CameraLimits] to a map showing [SampleRegion]: a minimum zoom at which the region fills the
- * view, and a camera-target area that keeps every edge of the view inside the region at the current zoom.
- * While [enabled] is false (the streamed world map) the camera can go anywhere.
+ * Applies [CameraLimits] to a map showing a downloaded region: a minimum zoom at which the region fills
+ * the view, and a camera-target area that keeps every edge of the view inside the region at the current
+ * zoom. While [bounds] is null (the streamed world map) the camera can go anywhere.
  */
 private class RegionCameraLimiter {
     private var view: MapView? = null
@@ -387,12 +421,12 @@ private class RegionCameraLimiter {
     private var heightDp = 0.0
     private var limitedForZoom = Double.NaN
 
-    var enabled = false
+    var bounds: RegionBounds? = null
         set(value) {
             if (field == value) return
             field = value
             val map = map ?: return
-            if (value) {
+            if (value != null) {
                 widthDp = 0.0
                 heightDp = 0.0
                 onViewportChanged()
@@ -411,14 +445,14 @@ private class RegionCameraLimiter {
     fun onViewportChanged() {
         val view = view ?: return
         val map = map ?: return
-        if (!enabled) return
+        val bounds = bounds ?: return
         val density = view.resources.displayMetrics.density
         val width = view.width / density.toDouble()
         val height = view.height / density.toDouble()
         if (width <= 0 || height <= 0 || (width == widthDp && height == heightDp)) return
         widthDp = width
         heightDp = height
-        val minZoom = CameraLimits.minZoom(SampleRegion.southWest, SampleRegion.northEast, width, height)
+        val minZoom = CameraLimits.minZoom(bounds.southWest, bounds.northEast, width, height)
         map.setMinZoomPreference(minZoom)
         if (map.cameraPosition.zoom < minZoom) map.moveCamera(CameraUpdateFactory.zoomTo(minZoom))
         limitedForZoom = Double.NaN
@@ -427,13 +461,14 @@ private class RegionCameraLimiter {
 
     fun onCameraMoved() {
         val map = map ?: return
-        if (!enabled || widthDp <= 0) return
+        val bounds = bounds ?: return
+        if (widthDp <= 0) return
         val zoom = map.cameraPosition.zoom
         if (abs(zoom - limitedForZoom) < ZOOM_EPSILON) return
         limitedForZoom = zoom
         val (low, high) = CameraLimits.targetBounds(
-            SampleRegion.southWest,
-            SampleRegion.northEast,
+            bounds.southWest,
+            bounds.northEast,
             zoom,
             widthDp,
             heightDp

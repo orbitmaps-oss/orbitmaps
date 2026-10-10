@@ -202,8 +202,23 @@
     <string name="regions_wifi_only">Update on Wi-Fi only</string>
     <string name="regions_wifi_only_hint">Daily changes download only on Wi-Fi.</string>
     <string name="regions_size_mb">%1$d MB</string>
-    <string name="regions_ready">Ready</string>
     <string name="regions_download">Download</string>
+    <string name="regions_size_gb">%1$.1f GB</string>
+    <!-- %1$d is a percentage; %% is a literal percent sign -->
+    <string name="regions_downloading">Downloading… %1$d%%</string>
+    <!-- %1$s is a date such as 2026-10-10 -->
+    <string name="regions_built">Built %1$s</string>
+    <string name="regions_cancel">Cancel</string>
+    <string name="regions_delete">Delete</string>
+    <string name="regions_retry">Try again</string>
+    <string name="regions_refresh">Refresh</string>
+    <string name="regions_loading">Loading regions…</string>
+    <string name="regions_catalogue_unavailable">Can\'t load the list of regions. Connect to the internet and try again.</string>
+    <string name="regions_problem_offline">No connection. Connect to the internet to download.</string>
+    <string name="regions_problem_needs_wifi">Waiting for Wi-Fi. Turn off \"Update on Wi-Fi only\" to use mobile data.</string>
+    <string name="regions_problem_no_space">Not enough free space on this phone.</string>
+    <string name="regions_problem_unavailable">This region isn\'t available right now. Try again later.</string>
+    <string name="regions_problem_corrupt">The download was damaged. Try again.</string>
     <string name="privacy_title">Privacy and settings</string>
     <string name="privacy_summary">Nothing leaves your phone unless you switch it on here.</string>
     <string name="privacy_search_history">Keep search history</string>

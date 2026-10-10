@@ -15,6 +15,8 @@ custom-domain feature. Paths are versioned (`v1/…`), so a new layout never bre
 | `v1/routing/valhalla-3.6.3/valhalla.json` | Valhalla config generated with the tiles | `valhalla_build_config` | `TripRouting`: fetched once, paths rewritten on the phone |
 | `v1/routing/valhalla-3.6.3/{0,1,2}/…/….gph` | Valhalla graph tiles, one file per tile | `valhalla_build_tiles` | `TileStore`: fetched per trip, kept along started trips |
 | `v1/search/v2/2/…/….sqlite` | Area search shards, one per 0.25° cell | `build_search_shards.py` | `ShardSearch`: fetched around the map centre |
+| `v1/regions/index.json` | The list of downloadable regions | `build_region_pack.py` | `RegionCatalog`: the Offline regions page |
+| `v1/regions/<id>/{manifest.json,map.pmtiles,routing.tar,routing.json,search.sqlite}` | One region pack | `build_region_pack.py` | `RegionStore`: downloaded in full, SHA-256 checked, then used for map, search and routes with no network |
 
 The routing folder name carries the Valhalla version: **it must match the Valhalla inside
 valhalla-mobile** (3.6.3 for valhalla-mobile 0.6.3). When valhalla-mobile is upgraded, build a new
@@ -125,6 +127,23 @@ rclone copy out/search-v2 r2:orbitmaps-data/v1/search/v2/ --transfers 64
 
 Needs osmium-tool and Python with FTS5. Same machine as the routing build; it writes one small
 file per populated 0.25° cell.
+
+## 4. Region packs
+
+A region pack is the map, routing tiles and search index of one area, downloaded as a unit so it
+works with no network. Build one from the three pieces above (or a sample), then upload the output
+folder as is:
+
+```sh
+python pipeline/sample_region/build_region_pack.py --id goa --name Goa --bbox 73.6,14.9,74.4,15.9     --map out/goa.pmtiles --routing out/goa-routing.tar --routing-config out/valhalla.json     --search out/goa-search.sqlite
+rclone copy pipeline/out/packs/regions r2:orbitmaps-data/v1/regions/ --transfers 8
+```
+
+The builder merges the region into `index.json`, so build every pack into the same output folder
+before uploading. Upload the pack folders first and `index.json` last: the app only lists regions
+that `index.json` names, and checks every file's size and SHA-256 against `manifest.json` before it
+installs a pack. A new build of a region is a new upload over the same paths with a new `built`
+date; phones that have the old one see the new date in the list and can download it again.
 
 ## Updating
 

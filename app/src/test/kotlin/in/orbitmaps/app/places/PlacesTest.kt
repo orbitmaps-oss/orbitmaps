@@ -94,6 +94,29 @@ class PlacesTest {
     }
 
     @Test
+    fun packIdsRoundTripAndMalformedOnesAreRejected() {
+        assertEquals("pack:goa:42", PlaceIds.forPack("goa", 42))
+        assertEquals(PlaceRef(PlaceSource.Pack, 42, packId = "goa"), PlaceIds.parse("pack:goa:42"))
+        assertNull(PlaceIds.parse("pack:goa"))
+        assertNull(PlaceIds.parse("pack::42"))
+        assertNull(PlaceIds.parse("pack:goa:x"))
+    }
+
+    @Test
+    fun packResultsDropDuplicatesAcrossOverlappingRegionsAndAreas() {
+        val packs = listOf(
+            PackHit("goa", hit("Cafe A", 15.49, 73.82, score = 4.0, osm = "n10")),
+            PackHit("panaji", hit("Cafe A", 15.49, 73.82, score = 4.0, osm = "n10")),
+            PackHit("panaji", hit("Cafe C", 15.47, 73.80, score = 3.0, osm = "n12"))
+        )
+        val area = listOf(ShardHit(818660, hit("Cafe A", 15.49, 73.82, score = 9.0, osm = "n10")))
+        val merged = mergeResults(emptyList(), emptyList(), limit = 10, area = area, packs = packs)
+        assertEquals(listOf("Cafe A", "Cafe C"), merged.map { it.hit.place.name })
+        assertEquals(listOf("pack:goa:1", "pack:panaji:1"), merged.map { it.id })
+        assertEquals(listOf(PlaceSource.Pack, PlaceSource.Pack), merged.map { it.source })
+    }
+
+    @Test
     fun sampleSearchMatchesNamesIgnoringCase() = runBlocking {
         val results = samples.search("river", null)
         assertFalse(results.fromOfflineIndex)

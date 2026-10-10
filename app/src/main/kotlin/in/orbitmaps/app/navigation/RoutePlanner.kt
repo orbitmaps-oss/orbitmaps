@@ -4,6 +4,9 @@ package `in`.orbitmaps.app.navigation
 
 import android.app.Application
 import `in`.orbitmaps.app.map.SampleRegion
+import `in`.orbitmaps.app.regions.InstalledRegion
+import `in`.orbitmaps.app.regions.RegionPicker
+import `in`.orbitmaps.app.regions.RegionRouting
 import `in`.orbitmaps.app.routing.Costing
 import `in`.orbitmaps.app.routing.FetchReport
 import `in`.orbitmaps.app.routing.OfflineRouter
@@ -31,7 +34,7 @@ sealed interface PlanOutcome {
 }
 
 /**
- * Finds routes on the phone: from a downloaded region when both ends are inside it (no network),
+ * Finds routes on the phone: from a downloaded region ([packs], or the bundled sample) when both ends are inside it (no network),
  * otherwise from tiles fetched on demand ([TripRouting]) when [fetchAllowed]. The engine isn't
  * thread-safe, so plans run one at a time. Positions are never logged.
  */
@@ -40,6 +43,33 @@ class RoutePlanner(private val application: Application, private val fetchAllowe
     private val mutex = Mutex()
     private var regionChecked = false
     private var region: OfflineRouter? = null
+    private val packRouters = mutableMapOf<String, OfflineRouter>()
+    private val brokenPacks = mutableSetOf<String>()
+
+    /** The downloaded regions with routing data; a route inside one needs no network at all. */
+    @Volatile var packs: List<InstalledRegion> = emptyList()
+
+    /** The engine of a downloaded pack, built on first use; null if it has none or can't be opened. */
+    private fun packRouter(pack: InstalledRegion): OfflineRouter? {
+        packRouters[pack.id]?.let { return it }
+        if (pack.id in brokenPacks) return null
+        val router = RegionRouting.configFor(pack)?.let {
+            try {
+                OfflineRouter(it)
+            } catch (e: RuntimeException) {
+                null
+            }
+        }
+        if (router == null) brokenPacks += pack.id else packRouters[pack.id] = router
+        return router
+    }
+
+    /** Closes engines of packs that were deleted, so their files can go. */
+    private fun dropRemovedPacks(current: List<InstalledRegion>) {
+        val ids = current.map { it.id }.toSet()
+        packRouters.keys.filterNot { it in ids }.forEach { packRouters.remove(it)?.close() }
+        brokenPacks.retainAll(ids)
+    }
 
     /** The bundled sample region's engine, built once; null in builds that don't bundle one. */
     private suspend fun regionRouter(): OfflineRouter? {
@@ -59,8 +89,11 @@ class RoutePlanner(private val application: Application, private val fetchAllowe
 
     suspend fun plan(from: LatLon, to: LatLon, costing: Costing, language: String): PlanOutcome = mutex.withLock {
         withContext(Dispatchers.IO) {
-            val inRegion = SampleRegion.contains(from) && SampleRegion.contains(to)
-            val local = if (inRegion) regionRouter() else null
+            val current = packs
+            dropRemovedPacks(current)
+            val pack = RegionPicker.forRoute(current, from, to)
+            val inSample = SampleRegion.contains(from) && SampleRegion.contains(to)
+            val local = pack?.let(::packRouter) ?: if (inSample) regionRouter() else null
             if (local != null) {
                 return@withContext try {
                     PlanOutcome.Ok(
@@ -94,5 +127,7 @@ class RoutePlanner(private val application: Application, private val fetchAllowe
         trips.close()
         region?.close()
         region = null
+        packRouters.values.forEach { it.close() }
+        packRouters.clear()
     }
 }
