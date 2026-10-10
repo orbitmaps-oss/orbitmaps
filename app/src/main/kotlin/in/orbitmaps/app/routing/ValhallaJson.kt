@@ -30,7 +30,9 @@ data class RouteSummary(
     val lengthKm: Double,
     val timeSeconds: Double,
     val maneuvers: Int,
-    val shape: List<LatLon> = emptyList()
+    val shape: List<LatLon> = emptyList(),
+    /** Valhalla's full reply, for navigation (maneuvers and instructions). Never logged. */
+    val json: String = ""
 )
 
 /** Valhalla answered with an error, e.g. no road near a point (code 171) or no route (442). */
@@ -88,14 +90,19 @@ object ValhallaJson {
     }
 
     /** A route request between two points. Instructions are included, as navigation will need them. */
-    fun routeRequest(from: LatLon, to: LatLon, costing: Costing = Costing.Car): String = buildJsonObject {
-        putJsonArray("locations") {
-            add(location(from))
-            add(location(to))
-        }
-        put("costing", costing.valhallaName)
-        putJsonObject("directions_options") { put("units", "kilometers") }
-    }.toString()
+    fun routeRequest(from: LatLon, to: LatLon, costing: Costing = Costing.Car, language: String? = null): String =
+        buildJsonObject {
+            putJsonArray("locations") {
+                add(location(from))
+                add(location(to))
+            }
+            put("costing", costing.valhallaName)
+            putJsonObject("directions_options") {
+                put("units", "kilometers")
+                // Valhalla falls back to English for languages it has no instructions for.
+                if (language != null) put("language", language)
+            }
+        }.toString()
 
     private fun location(point: LatLon) = buildJsonObject {
         put("lat", point.latitude)
@@ -122,7 +129,8 @@ object ValhallaJson {
             lengthKm = summary.number("length"),
             timeSeconds = summary.number("time"),
             maneuvers = maneuvers,
-            shape = shape
+            shape = shape,
+            json = response
         )
     }
 

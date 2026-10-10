@@ -138,7 +138,7 @@ class TripRoutingTest {
 
     private class FakeRouter(private val result: () -> RouteSummary) : TripRouting.Router {
         var routed = 0
-        override fun route(from: LatLon, to: LatLon, costing: Costing): RouteSummary {
+        override fun route(from: LatLon, to: LatLon, costing: Costing, language: String?): RouteSummary {
             routed++
             return result()
         }

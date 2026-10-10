@@ -37,7 +37,7 @@ class TripRouting(
 ) : Closeable {
     /** The routing part of [OfflineRouter], so tests can replace the native engine. */
     interface Router : Closeable {
-        fun route(from: LatLon, to: LatLon, costing: Costing = Costing.Car): RouteSummary
+        fun route(from: LatLon, to: LatLon, costing: Costing = Costing.Car, language: String? = null): RouteSummary
 
         override fun close() = Unit
     }
@@ -64,11 +64,11 @@ class TripRouting(
         }
     }
 
-    fun plan(from: LatLon, to: LatLon, costing: Costing = Costing.Car): TripPlan {
+    fun plan(from: LatLon, to: LatLon, costing: Costing = Costing.Car, language: String? = null): TripPlan {
         val report = tiles.ensure(TripTiles.forPlanning(from, to))
         val router = router() ?: return TripPlan.NoEngine
         return try {
-            TripPlan.Ready(router.route(from, to, costing), report)
+            TripPlan.Ready(router.route(from, to, costing, language), report)
         } catch (e: RoutingException) {
             TripPlan.NoRoute(e.message ?: "no route", report)
         }

@@ -103,6 +103,23 @@ class ValhallaJsonTest {
     }
 
     @Test
+    fun theLanguageIsRequestedWhenGivenAndOtherwiseLeftOut() {
+        val withLanguage = Json.parseToJsonElement(
+            ValhallaJson.routeRequest(LatLon(0.0, 0.0), LatLon(1.0, 1.0), language = "hi-IN")
+        ).jsonObject.getValue("directions_options").jsonObject
+        assertEquals("hi-IN", withLanguage.getValue("language").jsonPrimitive.content)
+        val without = Json.parseToJsonElement(ValhallaJson.routeRequest(LatLon(0.0, 0.0), LatLon(1.0, 1.0)))
+            .jsonObject.getValue("directions_options").jsonObject
+        assertFalse("language" in without)
+    }
+
+    @Test
+    fun theFullReplyIsKeptForNavigation() {
+        val response = """{"trip":{"legs":[],"summary":{"length":1.0,"time":60.0}}}"""
+        assertEquals(response, ValhallaJson.parseRoute(response).json)
+    }
+
+    @Test
     fun defaultCostingIsCar() {
         assertTrue(ValhallaJson.routeRequest(LatLon(0.0, 0.0), LatLon(1.0, 1.0)).contains("\"costing\":\"auto\""))
     }
@@ -116,7 +133,7 @@ class ValhallaJsonTest {
         """.trimIndent()
         assertEquals(
             RouteSummary(lengthKm = 5.123, timeSeconds = 612.4, maneuvers = 3),
-            ValhallaJson.parseRoute(response)
+            ValhallaJson.parseRoute(response).copy(json = "")
         )
     }
 

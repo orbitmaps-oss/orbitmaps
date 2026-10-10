@@ -74,9 +74,9 @@ suspend fun setUpSampleRouting(context: Context): RoutingSetup {
 class OfflineRouter(configFile: File) : TripRouting.Router {
     private val valhalla = Valhalla(configFile.absolutePath)
 
-    override fun route(from: LatLon, to: LatLon, costing: Costing): RouteSummary {
+    override fun route(from: LatLon, to: LatLon, costing: Costing, language: String?): RouteSummary {
         val response = try {
-            valhalla.routeRaw(ValhallaJson.routeRequest(from, to, costing))
+            valhalla.routeRaw(ValhallaJson.routeRequest(from, to, costing, language))
         } catch (e: ValhallaException) {
             throw RoutingException(e.message ?: "Valhalla error")
         }
