@@ -32,7 +32,8 @@ CI) and only uses HTTPS.
 | **Map tiles** for the area on screen | While you look at an area you haven't downloaded (switch: *Browse undownloaded areas*, on by default) | Which map squares are being viewed. Not who, and not your position |
 | **Routing tiles** for a trip | When you plan a route outside downloaded regions | The rough corridor of the trip (squares of about 25 km along roads, larger elsewhere). Never the start, destination or route itself; the route is calculated on the phone |
 | **Search shards** for an area | When you search in an area you haven't downloaded | Which area is searched. Never what you type; matching happens on the phone |
-| **Region packs** and their daily updates | When you download or update a region | Which region and version |
+| **Region list** (`regions/index.json`) | When you open *Offline regions* while online | That the list was fetched. The same file for everyone; it never carries your position |
+| **Region packs** and their updates | When you tap *Download* on a region | Which region and version. Resumed downloads ask for the rest of the same file |
 
 Requests carry **no account, device ID, advertising ID, cookie or location**, only the name of
 the file. The app asks for a generic name ("OrbitMaps") instead of Android's default, which
