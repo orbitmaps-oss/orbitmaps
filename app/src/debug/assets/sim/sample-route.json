@@ -1,0 +1,69 @@
+{
+  "trip": {
+    "status": 0,
+    "units": "kilometers",
+    "legs": [
+      {
+        "shape": "gh~p\\o|aykCgbC?owH_jAowH_|Bg^_vJ?otLguKo}@_vJ?",
+        "maneuvers": [
+          {
+            "type": 1,
+            "instruction": "Drive north on Sample Road A.",
+            "verbal_pre_transition_instruction": "Drive north on Sample Road A.",
+            "street_names": [
+              "Sample Road A"
+            ],
+            "length": 1.402,
+            "time": 100.8,
+            "begin_shape_index": 0,
+            "end_shape_index": 3
+          },
+          {
+            "type": 10,
+            "instruction": "Turn right onto Sample Road B.",
+            "verbal_pre_transition_instruction": "Turn right onto Sample Road B.",
+            "street_names": [
+              "Sample Road B"
+            ],
+            "length": 1.397,
+            "time": 100.5,
+            "begin_shape_index": 3,
+            "end_shape_index": 5,
+            "verbal_transition_alert_instruction": "Turn right onto Sample Road B."
+          },
+          {
+            "type": 15,
+            "instruction": "Turn left onto Sample Road C.",
+            "verbal_pre_transition_instruction": "Turn left onto Sample Road C.",
+            "street_names": [
+              "Sample Road C"
+            ],
+            "length": 1.399,
+            "time": 100.7,
+            "begin_shape_index": 5,
+            "end_shape_index": 7,
+            "verbal_transition_alert_instruction": "Turn left onto Sample Road C."
+          },
+          {
+            "type": 4,
+            "instruction": "You have arrived at your destination.",
+            "verbal_pre_transition_instruction": "You have arrived at your destination.",
+            "street_names": [],
+            "length": 0.0,
+            "time": 0.0,
+            "begin_shape_index": 7,
+            "end_shape_index": 7
+          }
+        ],
+        "summary": {
+          "length": 4.198,
+          "time": 302.0
+        }
+      }
+    ],
+    "summary": {
+      "length": 4.198,
+      "time": 302.0
+    }
+  }
+}

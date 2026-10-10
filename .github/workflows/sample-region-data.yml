@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Builds the Panaji sample region's routing tiles (Valhalla) and search index (SQLite FTS5) and uploads
+# them as an artifact. Runs on demand (Actions tab -> "Sample region data" -> "Run workflow", once this
+# file is on main) and on pull requests that change the build. Uses no secrets and writes nothing to the
+# repository or any server; the result is a downloadable artifact (30 days).
+# Actions are pinned to commit SHAs (same versions as ci.yml); the Valhalla image is pinned by digest
+# in pipeline/sample_region/build_sample_routing.py.
+
+name: Sample region data
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - pipeline/sample_region/build_sample_routing.py
+      - pipeline/sample_region/build_sample_search.py
+      - pipeline/sample_region/fetch_sample_region.py
+      - .github/workflows/sample-region-data.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Panaji routing tiles and search index
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.x"
+
+      - name: Pipeline tests
+        run: python -m unittest discover -s pipeline/sample_region -p "test_*.py" -v
+
+      - name: Install osmium-tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends osmium-tool
+          osmium --version
+
+      - name: Build routing tiles
+        run: python pipeline/sample_region/build_sample_routing.py
+
+      - name: Build search index
+        run: python pipeline/sample_region/build_sample_search.py
+
+      - name: Upload tiles, search index and manifest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: panaji-region-data
+          # Paths in the artifact are relative to pipeline/out/sample-region/: unzip it there.
+          path: |
+            pipeline/out/sample-region/assets/regions/panaji-routing.tar
+            pipeline/out/sample-region/assets/regions/panaji-routing.json
+            pipeline/out/sample-region/assets/regions/panaji-search.sqlite
+            pipeline/out/sample-region/routing-manifest.json
+          retention-days: 30
+          if-no-files-found: error

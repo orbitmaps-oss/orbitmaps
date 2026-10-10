@@ -22,7 +22,7 @@ sealed interface InstallResult {
     /** The APK doesn't contain the region (release builds). */
     data object NotBundled : InstallResult
 
-    /** The bundled file isn't a PMTiles v3 archive. Nothing was installed. */
+    /** The bundled file failed the installer's format check. Nothing was installed. */
     data object Invalid : InstallResult
 
     /** Copying failed (for example, the disk is full). Nothing was installed. */
@@ -30,7 +30,8 @@ sealed interface InstallResult {
 }
 
 /**
- * Copies a bundled PMTiles region into app storage so MapLibre can read it as a plain file.
+ * Copies a bundled region file (PMTiles map, Valhalla routing tar or config) into app storage so the
+ * map and routing engines can read it as a plain file.
  *
  * The copy goes to a `.tmp` file that is synced and then atomically renamed, so an interrupted copy
  * never leaves a half-written region behind. A marker file next to the region records [install]'s
@@ -40,16 +41,29 @@ object RegionInstaller {
     private val PMTILES_MAGIC = "PMTiles".toByteArray(Charsets.US_ASCII)
     private const val PMTILES_VERSION = 3
 
+    /** POSIX tar files have "ustar" at byte 257 of the first header. */
+    private val TAR_MAGIC = "ustar".toByteArray(Charsets.US_ASCII)
+    private const val TAR_MAGIC_OFFSET = 257
+
+    /** Every SQLite 3 database starts with these 16 bytes. */
+    private val SQLITE_MAGIC = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
+
     /**
      * @param open opens the bundled region, or returns null if it isn't bundled.
      * @param stamp changes whenever the bundled file may have changed (the app's last update time).
+     * @param isValid checks the file format before it is installed; PMTiles v3 by default.
      */
-    fun install(open: () -> InputStream?, target: File, stamp: String): InstallResult {
+    fun install(
+        open: () -> InputStream?,
+        target: File,
+        stamp: String,
+        isValid: (File) -> Boolean = ::hasPmTilesHeader
+    ): InstallResult {
         val marker = File(target.parentFile, "${target.name}.installed")
         val upToDate = target.isFile &&
             marker.isFile &&
             marker.readText() == markerText(stamp, target.length()) &&
-            hasPmTilesHeader(target)
+            isValid(target)
         if (upToDate) return InstallResult.Installed(target, copied = false)
         val dir = target.absoluteFile.parentFile
         val tmp = File(dir, "${target.name}.tmp")
@@ -63,7 +77,7 @@ object RegionInstaller {
                     out.fd.sync()
                 }
             }
-            if (!hasPmTilesHeader(tmp)) {
+            if (!isValid(tmp)) {
                 tmp.delete()
                 return InstallResult.Invalid
             }
@@ -89,6 +103,19 @@ object RegionInstaller {
             header[PMTILES_MAGIC.size].toInt() == PMTILES_VERSION
     }
 
+    fun hasTarHeader(file: File): Boolean {
+        val header = ByteArray(TAR_MAGIC_OFFSET + TAR_MAGIC.size)
+        val read = file.inputStream().use { it.readNBytesCompat(header) }
+        return read == header.size &&
+            header.copyOfRange(TAR_MAGIC_OFFSET, header.size).contentEquals(TAR_MAGIC)
+    }
+
+    fun hasSqliteHeader(file: File): Boolean {
+        val header = ByteArray(SQLITE_MAGIC.size)
+        val read = file.inputStream().use { it.readNBytesCompat(header) }
+        return read == header.size && header.contentEquals(SQLITE_MAGIC)
+    }
+
     private fun markerText(stamp: String, size: Long) = "$stamp\n$size\n"
 
     private fun InputStream.readNBytesCompat(buffer: ByteArray): Int {
@@ -103,17 +130,27 @@ object RegionInstaller {
 }
 
 /** Installs [SampleRegion] from the APK assets into `filesDir`, off the main thread. */
-suspend fun installSampleRegion(context: Context): InstallResult = withContext(Dispatchers.IO) {
+suspend fun installSampleRegion(context: Context): InstallResult =
+    installAsset(context, SampleRegion.ASSET_PATH, SampleRegion.INSTALLED_PATH, RegionInstaller::hasPmTilesHeader)
+
+/** Installs one bundled asset from the APK into `filesDir`, off the main thread. */
+suspend fun installAsset(
+    context: Context,
+    assetPath: String,
+    installedPath: String,
+    isValid: (File) -> Boolean
+): InstallResult = withContext(Dispatchers.IO) {
     RegionInstaller.install(
         open = {
             try {
-                context.assets.open(SampleRegion.ASSET_PATH)
+                context.assets.open(assetPath)
             } catch (e: FileNotFoundException) {
                 null
             }
         },
-        target = File(context.filesDir, SampleRegion.INSTALLED_PATH),
-        stamp = lastUpdateTime(context).toString()
+        target = File(context.filesDir, installedPath),
+        stamp = lastUpdateTime(context).toString(),
+        isValid = isValid
     )
 }
 

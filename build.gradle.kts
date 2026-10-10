@@ -67,6 +67,12 @@ val checkForbiddenFiles =
         "No secrets, keystores or IDE files are tracked",
         "scripts/check_forbidden_files.py",
     )
+val checkNetworkHosts =
+    registerPython(
+        "checkNetworkHosts",
+        "App code only reaches hosts in config/network-hosts.txt, over HTTPS",
+        "scripts/check_network_hosts.py",
+    )
 val checkOfflineAssets =
     registerPython(
         "checkOfflineAssets",
@@ -86,20 +92,12 @@ val checkManifestPermissions =
         "Every permission in the merged manifests is on the permissions allow-list",
         "scripts/check_permissions.py $mergedManifests",
     )
-val checkManifestOffline =
-    registerPython(
-        "checkManifestOffline",
-        "No INTERNET permission in the merged manifests",
-        "scripts/check_offline.py --manifest $mergedManifests",
-    )
-listOf(checkManifestPermissions, checkManifestOffline).forEach {
-    it.configure { dependsOn(":app:processDebugManifest", ":app:processReleaseManifest") }
-}
+checkManifestPermissions.configure { dependsOn(":app:processDebugManifest", ":app:processReleaseManifest") }
 
 tasks.register("policyChecks") {
     group = "orbitmaps"
     description = "The CI policy checks that need no build (fast)"
-    dependsOn(policyScriptTests, pipelineTests, checkDependencyAllowlist, checkForbiddenFiles, checkOfflineAssets)
+    dependsOn(policyScriptTests, pipelineTests, checkDependencyAllowlist, checkForbiddenFiles, checkOfflineAssets, checkNetworkHosts)
 }
 
 tasks.register("checkAll") {
@@ -114,7 +112,6 @@ tasks.register("checkAll") {
         ":app:lintDebug",
         ":core:model:lint",
         checkManifestPermissions,
-        checkManifestOffline,
     )
     dependsOn(subprojects.map { "${it.path}:ktlintCheck" })
 }

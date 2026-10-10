@@ -7,7 +7,10 @@ ktlint-gradle = "14.2.0"
 compose-bom = "2026.09.00"
 activity-compose = "1.13.0"
 kotlinx-serialization-json = "1.11.0"
+androidx-sqlite = "2.7.1"
 maplibre-android = "13.6.0"
+# Must match the Valhalla version that builds the routing tiles (pipeline/sample_region/build_sample_routing.py).
+valhalla-mobile = "0.6.3"
 junit = "4.13.2"
 
 [libraries]
@@ -15,10 +18,18 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3" }
 androidx-compose-ui = { module = "androidx.compose.ui:ui" }
+# Only the small core icon set; the extended set adds megabytes to the APK.
+androidx-compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
+androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+# Our own SQLite build with FTS5 for offline search; the platform SQLite may lack FTS5.
+androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidx-sqlite" }
 junit = { module = "junit:junit", version.ref = "junit" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization-json" }
 # OpenGL ES variant (not -vulkan) for the widest device and emulator support.
 maplibre-android = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre-android" }
+# On-device Valhalla routing (MIT). 0.6.3 embeds Valhalla 3.6.3.
+valhalla-mobile = { module = "io.github.rallista:valhalla-mobile", version.ref = "valhalla-mobile" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

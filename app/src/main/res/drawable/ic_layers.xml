@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- Two stacked map sheets, for the layers button. Drawn for this project (the core icon set has none). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,3L21,9L12,15L3,9Z M5.2,12.6L12,17.1L18.8,12.6L21,14L12,20L3,14Z" />
+</vector>

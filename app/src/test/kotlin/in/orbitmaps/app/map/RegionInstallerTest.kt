@@ -112,4 +112,49 @@ class RegionInstallerTest {
         file.writeBytes(region)
         assertTrue(RegionInstaller.hasPmTilesHeader(file))
     }
+
+    /** A minimal POSIX tar header: "ustar" at byte 257, as Valhalla's tile extracts have. */
+    private val tar = ByteArray(257) + "ustar".toByteArray() + ByteArray(250)
+
+    @Test
+    fun tarHeaderCheckAcceptsUstarAndRejectsOthers() {
+        val file = tmp.newFile("x.tar")
+        file.writeBytes(tar)
+        assertTrue(RegionInstaller.hasTarHeader(file))
+        file.writeBytes(region)
+        assertFalse(RegionInstaller.hasTarHeader(file))
+        file.writeBytes(ByteArray(10))
+        assertFalse(RegionInstaller.hasTarHeader(file))
+    }
+
+    @Test
+    fun customFormatCheckInstallsRoutingTiles() {
+        val target = File(tmp.root, "regions/panaji-routing.tar")
+        val result = RegionInstaller.install({ ByteArrayInputStream(tar) }, target, "1", RegionInstaller::hasTarHeader)
+        assertEquals(InstallResult.Installed(target, copied = true), result)
+        assertArrayEquals(tar, target.readBytes())
+        val again = RegionInstaller.install({ ByteArrayInputStream(tar) }, target, "1", RegionInstaller::hasTarHeader)
+        assertEquals(InstallResult.Installed(target, copied = false), again)
+    }
+
+    @Test
+    fun customFormatCheckRejectsTheWrongFormat() {
+        val target = File(tmp.root, "regions/panaji-routing.tar")
+        val result = RegionInstaller.install({
+            ByteArrayInputStream(region)
+        }, target, "1", RegionInstaller::hasTarHeader)
+        assertEquals(InstallResult.Invalid, result)
+        assertFalse(target.exists())
+    }
+
+    @Test
+    fun sqliteHeaderCheckAcceptsSqlite3Only() {
+        val file = tmp.newFile("x.sqlite")
+        file.writeBytes("SQLite format 3\u0000".toByteArray() + ByteArray(100))
+        assertTrue(RegionInstaller.hasSqliteHeader(file))
+        file.writeBytes("SQLite format 2\u0000".toByteArray() + ByteArray(100))
+        assertFalse(RegionInstaller.hasSqliteHeader(file))
+        file.writeBytes(tar)
+        assertFalse(RegionInstaller.hasSqliteHeader(file))
+    }
 }
