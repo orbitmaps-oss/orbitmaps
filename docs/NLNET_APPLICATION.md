@@ -6,8 +6,8 @@ call page for the exact deadline, limits and fields before submitting.
 
 ## Contact and project
 
-- **Your name / organisation:** TODO
-- **Email / phone / country:** TODO
+- **Your name / organisation:** Ravikant Jangid (individual)
+- **Email / phone / country:** enter these in NLnet's form only (India); this file is public.
 - **Project name:** Orbit Maps
 - **Website / repository:** https://github.com/orbitmaps-oss/orbitmaps (data host: https://data.orbitmaps.in)
 - **Licence:** app code GPL-3.0-or-later (with an App Store additional permission, see
@@ -49,21 +49,22 @@ public build pipeline that anyone can run to reproduce the data.
 
 ## Budget and work packages
 
-Requested amount: **TODO** (NLnet funds roughly EUR 5,000 to 50,000; state your hourly rate and
-hours per package). Suggested packages, to be sized by the maintainer:
+Requested amount: **EUR 27,000** = 480 hours at EUR 50/hour (EUR 24,000) plus a fixed EUR 3,000
+for an independent security review. Hours are estimates; adjust to what the maintainer can commit
+to (about six months part-time) and check NLnet's current rate guidance. Packages:
 
-1. **India data pipeline** — reproducible builds of the world map, routing tiles and search shards
+1. **India data pipeline** (120 h) — reproducible builds of the world map, routing tiles and search shards
    for the subcontinent; region packs for the major states; automated monthly refresh on free CI
    runners; size and cost measurements published.
-2. **Search quality for Indian addresses** — transliteration and multi-script names (Devanagari,
+2. **Search quality for Indian addresses** (100 h) — transliteration and multi-script names (Devanagari,
    Tamil, Bengali and others), localities and landmarks, ranking tests.
-3. **Navigation hardening** — rerouting, lane and junction prompts, voice in Indian languages via
+3. **Navigation hardening** (140 h) — rerouting, lane and junction prompts, voice in Indian languages via
    the system text-to-speech, field tests on low-end devices, battery and memory budgets.
-4. **Accessibility and localisation** — TalkBack support, large text, Hindi and at least two more
+4. **Accessibility and localisation** (60 h) — TalkBack support, large text, Hindi and at least two more
    languages in the string resources.
-5. **Release engineering** — reproducible signed builds, F-Droid inclusion and metadata, the
+5. **Release engineering** (60 h) — reproducible signed builds, F-Droid inclusion and metadata, the
    privacy documentation kept in step with the code.
-6. **Security and privacy review** — independent review of the download verification, the network
+6. **Security and privacy review** (fixed EUR 3,000) — independent review of the download verification, the network
    host policy and the absence of identifiers.
 
 ## Comparison with existing efforts
@@ -95,7 +96,7 @@ can fork, host their own data or build another region.
 
 ## Other funding and sustainability
 
-- **Other funding:** TODO (state none, or list it).
+- **Other funding:** none; the project is self-funded.
 - **Running costs:** designed to fit free tiers (see `docs/HOSTING.md`); donations or sponsorship
   can raise limits later. TODO: confirm there is no commercial plan or state it openly.
 
