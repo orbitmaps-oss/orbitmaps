@@ -25,6 +25,9 @@ object OnlineData {
     /** Valhalla graph tiles, one file per tile; the version must match valhalla-mobile's Valhalla. */
     const val ROUTING_TILES_URL = "$BASE_URL/routing/valhalla-3.6.3"
 
+    /** Region packs: `index.json` (the catalogue) and one folder per region with its manifest and files. */
+    const val REGIONS_URL = "$BASE_URL/regions"
+
     /** Search shards, one small SQLite FTS5 index per area. */
     const val SEARCH_SHARDS_URL = "$BASE_URL/search/v2"
 

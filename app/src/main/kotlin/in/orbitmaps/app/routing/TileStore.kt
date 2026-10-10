@@ -78,7 +78,7 @@ class TileStore(
                 absentMarker(tile).apply { parentFile?.mkdirs() }.writeText("")
                 Fetch.NotFound
             }
-            Download.Failed -> Fetch.Failed
+            Download.Failed, Download.Cancelled -> Fetch.Failed
         }
 
     private sealed interface Fetch {
