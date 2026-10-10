@@ -202,7 +202,6 @@
     <string name="regions_wifi_only">Update on Wi-Fi only</string>
     <string name="regions_wifi_only_hint">Daily changes download only on Wi-Fi.</string>
     <string name="regions_size_mb">%1$d MB</string>
-    <string name="regions_ready">Ready</string>
     <string name="regions_download">Download</string>
     <string name="regions_size_gb">%1$.1f GB</string>
     <!-- %1$d is a percentage; %% is a literal percent sign -->

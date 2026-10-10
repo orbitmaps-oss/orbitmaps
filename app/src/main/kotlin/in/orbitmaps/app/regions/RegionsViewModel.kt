@@ -89,12 +89,16 @@ class RegionsViewModel(application: Application) : AndroidViewModel(application)
                 return@launch
             }
             val (manifest, text) = loaded
+
+            // Plain free space on purpose: we don't count on other apps' caches being cleared.
+            @Suppress("UsableSpace")
+            val freeBytes = getApplication<Application>().filesDir.usableSpace
             val result = withContext(Dispatchers.IO) {
                 store.install(
                     manifest = manifest,
                     manifestText = text,
                     baseUrl = OnlineData.REGIONS_URL,
-                    freeBytes = getApplication<Application>().filesDir.usableSpace,
+                    freeBytes = freeBytes,
                     shouldContinue = { isActive },
                     onProgress = { done, total -> setState(id, RowState.Downloading(done, total)) }
                 )
