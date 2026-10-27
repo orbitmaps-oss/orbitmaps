@@ -10,13 +10,18 @@ These rules are binding for every change, human or AI. If a task conflicts with 
   and any analytics, ads, attribution or crash SDK (e.g. Sentry, Crashlytics, Bugsnag, AppsFlyer, Adjust, Mixpanel, Amplitude, Segment).
 - Never log location (coordinates, addresses, geohashes), search queries, routes, or IP addresses —
   not in Android `Log`, not in server logs, not in exceptions or test output committed to the repo.
-- Location, history and saved places stay on the device. No silent network calls.
+- Location, history and saved places stay on the device. No silent network calls. The one exception is online place
+  search (section 2), which sends the typed text and the map centre to OpenStreetMap's Nominatim.
 - Server code (Cloudflare Workers) must not store or log client IPs or request contents.
 
 ## 2. On-device first
-- Map drawing, search and routing are **computed on the phone**. Servers only serve static files (map tiles,
-  routing tiles, search shards, region packs) and our own open APIs. Never use third-party map, search,
-  geocoding or routing services, and never send a search query, route or position to a server.
+- Map drawing and routing are **computed on the phone**, and so is offline search. Servers only serve static files
+  (map tiles, routing tiles, search shards, region packs) and our own open APIs. Never use third-party map or routing
+  services, and never send a route or the user's position to a server.
+- Place search: the only third-party service is OpenStreetMap's public Nominatim (`nominatim.openstreetmap.org`), used
+  when online use is allowed. It receives the typed text and the map centre (never the GPS position); no history, no
+  identifiers. It is optional: the on-device search over downloaded packs, shards and the world index remains the
+  offline fallback. Use no other geocoding service.
 - Everything keeps working **offline once its data is on the phone**: downloaded region packs, the bundled world
   index, cached tiles and saved trip corridors. Without network the app degrades gracefully and says what is missing.
 - The app only contacts hosts in `config/network-hosts.txt`, over HTTPS, with no identifiers or cookies, and every
