@@ -53,7 +53,7 @@ public build pipeline that anyone can run to reproduce the data.
 
 ## Budget and work packages
 
-Requested amount: **EUR 27,000** = 480 hours at EUR 50/hour (EUR 24,000) plus a fixed EUR 3,000
+Requested amount: **EUR 29,000** = 520 hours at EUR 50/hour (EUR 26,000) plus a fixed EUR 3,000
 for an independent security review. Hours are estimates; adjust to what the maintainer can commit
 to (about six months part-time) and check NLnet's current rate guidance. Packages:
 
@@ -68,7 +68,13 @@ to (about six months part-time) and check NLnet's current rate guidance. Package
    languages in the string resources.
 5. **Release engineering** (60 h) — reproducible signed builds, F-Droid inclusion and metadata, the
    privacy documentation kept in step with the code.
-6. **Security and privacy review** (fixed EUR 3,000) — independent review of the download verification, the network
+6. **Self-hostable place search** (40 h) — the optional online search currently uses OpenStreetMap's public
+   Nominatim, which is not meant for heavy use. We document and script a Nominatim deployment for the
+   Indian subcontinent that anyone can run, with no request logging or IP storage, point the app at our
+   own instance (an HTTPS host added to `config/network-hosts.txt` and `PRIVACY.md` first), and measure
+   its memory, disk and monthly cost. The app keeps working without it: typing searches on the phone, and
+   online search falls back to the phone when the server is unreachable.
+7. **Security and privacy review** (fixed EUR 3,000) — independent review of the download verification, the network
    host policy and the absence of identifiers.
 
 ## Comparison with existing efforts
