@@ -18,8 +18,10 @@ call page for the exact deadline, limits and fields before submitting.
 Orbit Maps is an open-source, privacy-first maps app for Android that computes everything on the
 phone. Drawing the map, searching places and routing with turn-by-turn voice guidance run locally
 on OpenStreetMap data; our servers only hand out static files that are identical for every user, so
-there is no account, no tracking and no query ever leaves the device. Downloaded region packs work
-fully offline, and a trip's map tiles are saved automatically when navigation starts. The first
+there is no account, no tracking and no route or position ever leaves the device. Searching as you
+type happens on the phone; only when the user taps "Search online" do the typed text and the map
+centre go to OpenStreetMap's public geocoder (optional, never the GPS position). Downloaded region
+packs work fully offline, and a trip's map tiles are saved automatically when navigation starts. The first
 target is the Indian subcontinent, where data is expensive, connectivity is patchy and the dominant
 map apps are proprietary. We ask for support to turn the working prototype into a releasable app:
 reliable region packs for India, hardened offline routing and navigation, accessibility, and the
@@ -27,8 +29,10 @@ public build pipeline that anyone can run to reproduce the data.
 
 ## Why this matters (relevance to the call)
 
-- A navigation app that works without sending a user's position, searches or routes to anyone is
-  rare. Most open alternatives still rely on a hosted geocoder or router.
+- A navigation app that works without sending a user's position or routes to anyone is rare. Most
+  open alternatives still rely on a hosted geocoder or router. Ours answers searches on the phone as
+  you type; an optional online search, only on request, sends the typed text and the map centre to
+  OpenStreetMap's public Nominatim and falls back to the phone when offline.
 - Static-file-only hosting makes the service cheap enough to run at near-zero cost, so it can stay
   free and independent of any single company.
 - Everything is reproducible: the pipeline in `pipeline/` rebuilds map, routing and search data from
@@ -37,7 +41,7 @@ public build pipeline that anyone can run to reproduce the data.
 ## What exists today
 
 - Android app (Kotlin, Jetpack Compose, minSdk 26): MapLibre Native map with PMTiles, on-device
-  routing with Valhalla (valhalla-mobile), SQLite FTS5 search, our own navigation logic and voice
+  routing with Valhalla (valhalla-mobile), SQLite FTS5 search (plus optional online search via Nominatim), our own navigation logic and voice
   prompts (see `docs/decisions/0001-own-navigation-logic.md`).
 - Online-by-default streamed map with offline regions; routes fetch only the routing tiles along the
   trip, then are kept so the trip continues without signal.
@@ -82,7 +86,9 @@ what we reuse and contribute back (OSM data quality, PMTiles/Valhalla fixes, the
 
 - Keeping routing correct and fast on a phone with limited memory (memory-mapped tile tar, one
   engine per region, tile corridor fetching along a trip).
-- Searching large regions on-device without a server: shard layout, FTS5 index size, ranking.
+- Searching large regions on-device, without a server by default: shard layout, FTS5 index size, ranking.
+- Keeping the optional online search within OpenStreetMap's Nominatim usage policy (one request per
+  submitted search, rate-limited) and private: only the typed text and the map centre are sent.
 - Making downloads safe on poor networks: resumable, verified, atomic install.
 - Staying inside a near-zero hosting budget as usage grows (cache rules, size trimming, free-tier
   limits).
@@ -104,5 +110,5 @@ can fork, host their own data or build another region.
 
 - Link to the repository and `PRIVACY.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, `docs/HOSTING.md`.
 - Short screen recording of: first launch, a search, a route with voice, and a region download.
-- A one-page architecture diagram (map / search / routing all on the phone, static files only on
-  the server).
+- A one-page architecture diagram (map / routing / offline search all on the phone, static files
+  from our server, and the optional online search to OpenStreetMap only on request).
