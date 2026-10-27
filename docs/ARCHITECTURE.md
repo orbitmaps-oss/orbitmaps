@@ -105,6 +105,7 @@ can be tested quickly and shared with tooling.
 ## Privacy by construction
 
 - No Google Play Services: location comes from the platform `LocationManager`.
-- No network on the map, search or routing paths. Only `core/regionpack` talks to the network.
+- No network on the map or routing paths, and none while typing a search. Only `core/regionpack` and the
+  explicit "Search online" request (`app/.../search/OnlineSearch.kt`, to OpenStreetMap's Nominatim) talk to the network.
 - CI enforces the dependency allow-list, the ban on tracking and Google dependencies, and the
   permission allow-list.

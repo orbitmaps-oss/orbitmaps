@@ -5,6 +5,7 @@ package `in`.orbitmaps.app.places
 import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.search.CategoryGroup
 import `in`.orbitmaps.app.search.IndexedPlace
+import `in`.orbitmaps.app.search.OnlinePlace
 import `in`.orbitmaps.app.search.SearchHit
 import `in`.orbitmaps.app.search.ShardHit
 import `in`.orbitmaps.app.ui.sample.SampleData
@@ -143,5 +144,33 @@ class PlacesTest {
         assertEquals(4.4, cafe.rating!!, 0.0)
         assertEquals(6, cafe.confirmations)
         assertNull(samples.place("unknown"))
+    }
+
+    @Test
+    fun onlineIdsCarryThePlaceAndRoundTripEvenWithAwkwardCharacters() {
+        val place =
+            OnlinePlace("Café | Bar, Goa", "Café | Bar, MG Road, Panaji, Goa, 403001, India", LatLon(15.4909, 73.8278))
+        val id = OnlineIds.forOnline(place)
+        assertEquals(place, OnlineIds.parseOnline(id))
+        assertNull(OnlineIds.parseCoordinates(id))
+        assertNull(PlaceIds.parse(id))
+    }
+
+    @Test
+    fun coordinateIdsRoundTripAndRejectBrokenIds() {
+        val here = LatLon(-33.86, 151.2)
+        val id = OnlineIds.forCoordinates(here)
+        assertEquals(here, OnlineIds.parseCoordinates(id))
+        assertNull(OnlineIds.parseOnline(id))
+        assertNull(OnlineIds.parseCoordinates("geo:95.0,10.0"))
+        assertNull(OnlineIds.parseCoordinates("geo:abc"))
+        assertNull(OnlineIds.parseOnline("online:15.0,73.0|only-one-part"))
+        assertNull(OnlineIds.parseOnline("online:x,y|a|b"))
+        assertNull(OnlineIds.parseOnline("osm:42"))
+    }
+
+    @Test
+    fun theSamplePlacesHaveNoOnlineSearch() {
+        assertNull(runBlocking { samples.searchOnline("cafe") })
     }
 }

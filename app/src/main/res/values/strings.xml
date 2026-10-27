@@ -56,6 +56,7 @@
     <string name="category_transport">Transport</string>
     <string name="category_nature">Nature</string>
     <string name="category_poi">Place of interest</string>
+    <string name="category_coordinates">Coordinates</string>
 
     <!-- Home sheet (windows 1 to 3) -->
     <string name="search_hint">Search offline maps</string>
@@ -90,6 +91,11 @@
     <!-- Search (window 4) -->
     <string name="search_title">Search</string>
     <string name="search_offline_note">Results come from the regions on this phone. Nothing is sent anywhere.</string>
+    <string name="search_online_note">Results as you type come from this phone. Tap Search online to also search OpenStreetMap: it receives the text you typed and the centre of the map, nothing else.</string>
+    <string name="search_online_button">Search online</string>
+    <string name="search_online_results">Online results (OpenStreetMap)</string>
+    <string name="search_online_none">OpenStreetMap found nothing for this search.</string>
+    <string name="search_online_failed">Online search isn\'t available now. Showing results from this phone.</string>
     <string name="search_recent">Recent searches</string>
     <string name="search_results">Results</string>
     <string name="search_no_results">No matching places in your offline regions.</string>

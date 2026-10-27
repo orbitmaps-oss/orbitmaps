@@ -6,12 +6,15 @@ import android.app.Application
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.sqlite.SQLiteException
+import `in`.orbitmaps.app.R
 import `in`.orbitmaps.app.map.SampleRegion
 import `in`.orbitmaps.app.regions.InstalledRegion
 import `in`.orbitmaps.app.regions.PackRole
 import `in`.orbitmaps.app.search.CategoryGroup
 import `in`.orbitmaps.app.search.IndexedPlace
 import `in`.orbitmaps.app.search.OfflineSearch
+import `in`.orbitmaps.app.search.OnlinePlace
+import `in`.orbitmaps.app.search.OnlineSearch
 import `in`.orbitmaps.app.search.SearchHit
 import `in`.orbitmaps.app.search.SearchText
 import `in`.orbitmaps.app.search.ShardHit
@@ -25,6 +28,9 @@ import `in`.orbitmaps.core.model.LatLon
 import java.io.Closeable
 import java.io.File
 import java.io.IOException
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -54,6 +60,45 @@ interface PlaceRepository {
     suspend fun search(text: String, group: CategoryGroup?): SearchResults
 
     suspend fun place(id: String): PlaceItem?
+
+    /**
+     * Online search, run only when the user submits a search. Null when online search isn't allowed or
+     * the request failed, so the caller shows the offline [search] results.
+     */
+    suspend fun searchOnline(text: String): List<PlaceItem>? = null
+}
+
+/**
+ * Ids of places that have no index row: [forCoordinates] for a position typed or pasted by the user and
+ * [forOnline] for an online search result. They carry everything needed to show the place, so they work
+ * after a restart and offline.
+ */
+object OnlineIds {
+    private const val GEO = "geo:"
+    private const val ONLINE = "online:"
+
+    fun forCoordinates(location: LatLon) = "$GEO${location.latitude},${location.longitude}"
+
+    fun forOnline(place: OnlinePlace) = "$ONLINE${place.location.latitude},${place.location.longitude}|" +
+        "${URLEncoder.encode(place.label, "UTF-8")}|${URLEncoder.encode(place.fullName, "UTF-8")}"
+
+    /** The position of a [forCoordinates] id, or null for any other id. */
+    fun parseCoordinates(id: String): LatLon? = if (id.startsWith(GEO)) position(id.removePrefix(GEO)) else null
+
+    /** The place of a [forOnline] id, or null for any other id. */
+    fun parseOnline(id: String): OnlinePlace? {
+        if (!id.startsWith(ONLINE)) return null
+        val parts = id.removePrefix(ONLINE).split('|')
+        if (parts.size != 3) return null
+        val location = position(parts[0]) ?: return null
+        return OnlinePlace(URLDecoder.decode(parts[1], "UTF-8"), URLDecoder.decode(parts[2], "UTF-8"), location)
+    }
+
+    private fun position(text: String): LatLon? {
+        val latitude = text.substringBefore(',').toDoubleOrNull() ?: return null
+        val longitude = text.substringAfter(',', "").toDoubleOrNull() ?: return null
+        return LatLon.orNull(latitude, longitude)
+    }
 }
 
 /** Which index a place comes from. */
@@ -180,7 +225,9 @@ class SamplePlaces(private val resolve: (Int) -> String) : PlaceRepository {
 /**
  * The app's places: the installed region index, area search shards around the map centre (fetched
  * when online use is allowed) and the bundled world places index, otherwise the sample places.
- * Everything is searched on the phone; queries never leave it and are never logged.
+ * Typing searches on the phone and nothing leaves it. Only when the user submits a search, and online
+ * use is allowed, [searchOnline] sends the text and the map centre to Nominatim (PRIVACY.md).
+ * Queries are never logged.
  */
 class AppPlaces(private val application: Application) :
     PlaceRepository,
@@ -250,6 +297,7 @@ class AppPlaces(private val application: Application) :
             }
         }
         val from = center
+        val typed = OnlineSearch.coordinatesIn(text)?.let { coordinatesItem(it, from) }
         val merged = withContext(Dispatchers.IO) {
             val region = indexes[PlaceSource.Region]?.search(text, from, group).orEmpty()
             val packHits = packIndexes.entries.sortedBy { it.key }.flatMap { (id, index) ->
@@ -260,11 +308,41 @@ class AppPlaces(private val application: Application) :
             val world = if (group == null) indexes[PlaceSource.World]?.search(text, from).orEmpty() else emptyList()
             mergeResults(region, world, OfflineSearch.DEFAULT_LIMIT, area, packHits)
         }
-        if (indexes.isEmpty() && packIndexes.isEmpty() && merged.isEmpty()) return sample.search(text, group)
-        return SearchResults(merged.map { item(it.id, it.hit.place, it.hit.distanceKm) }, fromOfflineIndex = true)
+        if (indexes.isEmpty() && packIndexes.isEmpty() && merged.isEmpty()) {
+            val samples = sample.search(text, group)
+            return if (typed == null) samples else samples.copy(places = listOf(typed) + samples.places)
+        }
+        val places = merged.map { item(it.id, it.hit.place, it.hit.distanceKm) }
+        return SearchResults(listOfNotNull(typed) + places, fromOfflineIndex = true)
     }
 
+    override suspend fun searchOnline(text: String): List<PlaceItem>? {
+        if (!onlineAllowed || text.isBlank()) return null
+        val from = center
+        val found = withContext(Dispatchers.IO) { OnlineSearch.search(text, from) } ?: return null
+        return found.map { onlineItem(it, from) }
+    }
+
+    private fun coordinatesItem(location: LatLon, from: LatLon) = PlaceItem(
+        id = OnlineIds.forCoordinates(location),
+        name = String.format(Locale.ROOT, "%.5f, %.5f", location.latitude, location.longitude),
+        category = R.string.category_coordinates,
+        distanceKm = from.distanceKmTo(location),
+        location = location
+    )
+
+    private fun onlineItem(place: OnlinePlace, from: LatLon) = PlaceItem(
+        id = OnlineIds.forOnline(place),
+        name = place.label,
+        category = R.string.category_poi,
+        distanceKm = from.distanceKmTo(place.location),
+        detail = place.fullName,
+        location = place.location
+    )
+
     override suspend fun place(id: String): PlaceItem? {
+        OnlineIds.parseCoordinates(id)?.let { return coordinatesItem(it, center) }
+        OnlineIds.parseOnline(id)?.let { return onlineItem(it, center) }
         val ref = PlaceIds.parse(id) ?: return sample.place(id)
         val place = withContext(Dispatchers.IO) {
             if (ref.source == PlaceSource.Area) {

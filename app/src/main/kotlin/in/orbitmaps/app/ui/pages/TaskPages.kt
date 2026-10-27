@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -24,9 +25,11 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -40,9 +43,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import `in`.orbitmaps.app.R
+import `in`.orbitmaps.app.places.PlaceItem
 import `in`.orbitmaps.app.places.SamplePlaces
 import `in`.orbitmaps.app.places.SearchResults
 import `in`.orbitmaps.app.search.CategoryGroup
@@ -62,16 +67,32 @@ import kotlinx.coroutines.delay
 /** Wait this long after the last keystroke before searching. */
 private const val SEARCH_DEBOUNCE_MS = 150L
 
+/** The online half of a search: it starts when the user submits, never while typing. */
+private sealed interface OnlineState {
+    data object Idle : OnlineState
+
+    data object Loading : OnlineState
+
+    data class Done(val places: List<PlaceItem>) : OnlineState
+
+    /** Offline, timed out or the server refused: the offline results stand. */
+    data object Failed : OnlineState
+}
+
 /**
- * Window 4: offline search with category filters and recent searches. [search] runs on the phone:
- * the region's index when one is installed, otherwise the sample places. Nothing is sent anywhere.
+ * Window 4: search with category filters and recent searches. [search] runs on the phone as you type:
+ * the region's index when one is installed, otherwise the sample places. Nothing is sent anywhere until
+ * the user taps Search online (or the keyboard's search key); then [searchOnline] sends the text and the
+ * map centre to OpenStreetMap, and its results are shown above the ones from the phone.
  */
 @Composable
 fun SearchPage(
     onBack: () -> Unit,
     onOpenPlace: (String) -> Unit,
     search: suspend (String, CategoryGroup?) -> SearchResults,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onlineAllowed: Boolean = false,
+    searchOnline: suspend (String) -> List<PlaceItem>? = { null }
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableIntStateOf(-1) }
@@ -80,14 +101,31 @@ fun SearchPage(
         delay(SEARCH_DEBOUNCE_MS)
         value = search(query, group)
     }
+    var submitted by rememberSaveable { mutableStateOf("") }
+    val online by produceState<OnlineState>(OnlineState.Idle, submitted) {
+        if (submitted.isBlank()) {
+            value = OnlineState.Idle
+            return@produceState
+        }
+        value = OnlineState.Loading
+        value = searchOnline(submitted)?.let { OnlineState.Done(it) } ?: OnlineState.Failed
+    }
+    val submit = { if (onlineAllowed && query.isNotBlank()) submitted = query.trim() }
     PageScaffold(title = stringResource(R.string.search_title), onBack = onBack, modifier = modifier) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             label = { Text(stringResource(R.string.search_hint)) },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = if (onlineAllowed) ImeAction.Search else ImeAction.Done),
+            keyboardActions = KeyboardActions(onSearch = { submit() }),
             modifier = Modifier.fillMaxWidth()
         )
+        if (onlineAllowed) {
+            TextButton(onClick = submit, enabled = query.isNotBlank()) {
+                Text(stringResource(R.string.search_online_button))
+            }
+        }
         ChipRow {
             QuickGroups.forEachIndexed { index, chip ->
                 FilterChip(
@@ -98,10 +136,11 @@ fun SearchPage(
             }
         }
         Text(
-            stringResource(R.string.search_offline_note),
+            stringResource(if (onlineAllowed) R.string.search_online_note else R.string.search_offline_note),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (submitted == query.trim()) OnlineResults(online, onOpenPlace)
         if (query.isEmpty() && filter < 0) {
             SectionTitle(stringResource(R.string.search_recent))
             listOf(R.string.sample_recent_market, R.string.sample_recent_station).forEach { recent ->
@@ -125,6 +164,26 @@ fun SearchPage(
             )
         } else {
             SampleDataNote(Modifier.padding(vertical = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun OnlineResults(state: OnlineState, onOpenPlace: (String) -> Unit) {
+    when (state) {
+        OnlineState.Idle -> Unit
+        OnlineState.Loading -> LinearProgressIndicator(Modifier.fillMaxWidth())
+        OnlineState.Failed -> Text(
+            stringResource(R.string.search_online_failed),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        is OnlineState.Done -> {
+            SectionTitle(stringResource(R.string.search_online_results))
+            if (state.places.isEmpty()) {
+                Text(stringResource(R.string.search_online_none), style = MaterialTheme.typography.bodyMedium)
+            }
+            state.places.forEach { place -> PlaceRow(place, onClick = { onOpenPlace(place.id) }) }
         }
     }
 }

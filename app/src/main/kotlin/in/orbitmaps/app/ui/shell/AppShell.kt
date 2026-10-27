@@ -213,7 +213,7 @@ fun AppShell(
                 }
             }
             is Destination.Page ->
-                PageContent(current, state, update, places, data, onDataChange, regions, back, notYet)
+                PageContent(current, state, update, places, online, data, onDataChange, regions, back, notYet)
         }
 
         SnackbarHost(
@@ -272,6 +272,7 @@ private fun PageContent(
     state: AppState,
     update: (AppState.() -> AppState) -> Unit,
     places: PlaceRepository,
+    online: Boolean,
     data: DataSettings,
     onDataChange: (DataSettings.() -> DataSettings) -> Unit,
     regions: RegionsHost,
@@ -280,7 +281,13 @@ private fun PageContent(
 ) {
     val openPlace: (String) -> Unit = { id -> update { open(Destination.PlaceDetails(id)) } }
     when (current) {
-        Destination.Search -> SearchPage(onBack = back, onOpenPlace = openPlace, search = places::search)
+        Destination.Search -> SearchPage(
+            onBack = back,
+            onOpenPlace = openPlace,
+            search = places::search,
+            onlineAllowed = online,
+            searchOnline = places::searchOnline
+        )
         Destination.AddPlace -> AddPlacePage(onBack = back, onPublish = notYet)
         Destination.GroupChat -> GroupChatPage(onBack = back, onSend = notYet)
         Destination.Profile -> ProfilePage(signedIn = state.signedIn, onBack = back, onOpen = { update { open(it) } })
